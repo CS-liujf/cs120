@@ -1,0 +1,60 @@
+'''
+reference:
+[1]https://roytuts.com/python-voice-recording-through-microphone-for-arbitrary-time-using-pyaudio/
+[2]https://dolby.io/blog/capturing-high-quality-audio-with-python-and-pyaudio/
+'''
+
+import pyaudio
+import wave
+
+RATE = 48000
+CHANNELS = 2
+CHUNK = 1024
+FORMAT = pyaudio.paInt16
+
+
+def record():
+    duration = input('input duration:')
+    if duration.isnumeric():
+        duration = int(duration)
+    elif duration != 'any':
+        duration = 15
+
+    print('Start record')
+    pa = pyaudio.PyAudio()
+    stream = pa.open(
+        rate=RATE,
+        channels=CHANNELS,
+        format=FORMAT,
+        input=True,  # input stream flag
+        input_device_index=1,  # input device index
+        frames_per_buffer=CHUNK)
+    sampleWidth = pa.get_sample_size(FORMAT)
+    if duration == 'any':
+        frames = []
+        try:
+            while True:
+                data = stream.read(CHUNK)
+                frames.append(data)
+        except KeyboardInterrupt:
+            stream.stop_stream()
+            stream.close()
+            pa.terminate()
+            inputAudio = b''.join(frames)
+            print("Done")
+        except Exception as e:
+            print(str(e))
+            exit()
+    else:
+        inputAudio = stream.read(duration * RATE)
+
+    outputFileName = 'audio-recording.wav'
+    with wave.open(outputFileName, 'wb') as wf:
+        wf.setnchannels(CHANNELS)
+        wf.setsampwidth(sampleWidth)
+        wf.setframerate(RATE)
+        wf.writeframes(inputAudio)
+
+
+if __name__ == '__main__':
+    record()
