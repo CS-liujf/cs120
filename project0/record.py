@@ -21,8 +21,7 @@ def ceaseRecord():
     isEnd = True
 
 
-def record(duration=None):
-    pa = pyaudio.PyAudio()
+def record(pa: pyaudio.PyAudio, duration=None):
     stream = pa.open(
         rate=RATE,
         channels=CHANNELS,
@@ -47,7 +46,7 @@ def record(duration=None):
     print("Done")
     stream.stop_stream()
     stream.close()
-    pa.terminate()
+    # pa.terminate()
 
     outputFileName = 'audio-recording.wav'
     with wave.open(outputFileName, 'wb') as wf:
