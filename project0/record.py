@@ -21,13 +21,7 @@ def ceaseRecord():
     isEnd = True
 
 
-def record():
-    duration = input('input duration:')
-    if duration.isnumeric():
-        duration = int(duration)
-    elif duration != 'any':
-        duration = 15
-
+def record(duration=None):
     pa = pyaudio.PyAudio()
     stream = pa.open(
         rate=RATE,
@@ -38,7 +32,7 @@ def record():
         frames_per_buffer=CHUNK)
     sampleWidth = pa.get_sample_size(FORMAT)
     print('Recording...')
-    if duration == 'any':
+    if duration is None:
         frames = []
         keyboard.add_hotkey('space', ceaseRecord)
         print('Press space to cease')
