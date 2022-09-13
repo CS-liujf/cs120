@@ -6,11 +6,19 @@ reference:
 
 import pyaudio
 import wave
+import keyboard
 
 RATE = 48000
 CHANNELS = 2
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
+
+isEnd = False
+
+
+def ceaseRecord():
+    global isEnd
+    isEnd = True
 
 
 def record():
@@ -20,7 +28,6 @@ def record():
     elif duration != 'any':
         duration = 15
 
-    print('Start record')
     pa = pyaudio.PyAudio()
     stream = pa.open(
         rate=RATE,
@@ -30,17 +37,16 @@ def record():
         input_device_index=1,  # input device index
         frames_per_buffer=CHUNK)
     sampleWidth = pa.get_sample_size(FORMAT)
+    print('Recording...')
     if duration == 'any':
         frames = []
-        try:
-            while True:
-                data = stream.read(CHUNK)
-                frames.append(data)
-        except KeyboardInterrupt:
-            inputAudio = b''.join(frames)
-        except Exception as e:
-            print(str(e))
-            exit()
+        keyboard.add_hotkey('space', ceaseRecord)
+        print('Press space to cease')
+        while not isEnd:
+            data = stream.read(CHUNK)
+            frames.append(data)
+
+        inputAudio = b''.join(frames)
     else:
         inputAudio = stream.read(duration * RATE)
 
