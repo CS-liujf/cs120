@@ -37,16 +37,17 @@ def record():
                 data = stream.read(CHUNK)
                 frames.append(data)
         except KeyboardInterrupt:
-            stream.stop_stream()
-            stream.close()
-            pa.terminate()
             inputAudio = b''.join(frames)
-            print("Done")
         except Exception as e:
             print(str(e))
             exit()
     else:
         inputAudio = stream.read(duration * RATE)
+
+    print("Done")
+    stream.stop_stream()
+    stream.close()
+    pa.terminate()
 
     outputFileName = 'audio-recording.wav'
     with wave.open(outputFileName, 'wb') as wf:
