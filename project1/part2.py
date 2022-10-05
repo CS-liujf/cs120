@@ -10,12 +10,10 @@ fs = 48 * 10**3  # set 48KHz
 samples = np.arange(0, duration, 1 / fs)
 signal = np.sin(2 * np.pi * 1000 * samples) + np.sin(
     2 * np.pi * 10000 * samples)
-# sample = np.arange(0, 4, 1 / 3)
-# print(sample)
 
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paFloat32, channels=1, rate=fs, output=True)
-data = signal.astype(np.float32).tostring()
+data = (signal / 2).astype(np.float32).tobytes()
 stream.write(data)
 stream.stop_stream()
 stream.close()
