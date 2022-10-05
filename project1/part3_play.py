@@ -38,6 +38,13 @@ def HDLC_framing(bit_stream: str, frame_len: int):
             map(add_0, temp)))  # add beginning and ending sequence
 
 
+def frame2bytes(str_frame: str, signal0: bytes, signal1: bytes):
+    temp = b''
+    for bit in str_frame:
+        temp += signal0 if bit == '0' else signal1
+    return temp
+
+
 def Play(bit_rate=1000, carrier_wave_frequency=10000, frame_len=100):
     duration = 1 / bit_rate
     fs = 48 * 10**3  # set 48KHz
@@ -54,12 +61,14 @@ def Play(bit_rate=1000, carrier_wave_frequency=10000, frame_len=100):
     stream = p.open(format=pyaudio.paFloat32, channels=1, rate=fs, output=True)
 
     frame_list = HDLC_framing(bit_stream, frame_len)
+
     for i, frame in enumerate(frame_list):
-        for j, bit in enumerate(frame):
-            if bit == '0':
-                stream.write(signal0)
-            else:
-                stream.write(signal1)
+        stream.write(frame2bytes(frame, signal0, signal1))
+        # for j, bit in enumerate(frame):
+        #     if bit == '0':
+        #         stream.write(signal0)
+        #     else:
+        #         stream.write(signal1)
 
     stream.stop_stream()
     stream.close()
@@ -72,3 +81,7 @@ if __name__ == '__main__':
     Play(bit_rate=2000)
     t2 = time.time()
     print(t2 - t1)
+    # b = b''
+    # b += b'r'
+    # b += b
+    # print(b)
