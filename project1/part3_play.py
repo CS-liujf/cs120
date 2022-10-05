@@ -1,5 +1,5 @@
-from tempfile import tempdir
 import numpy as np
+from scipy import integrate
 import pyaudio
 import random
 
@@ -10,39 +10,46 @@ def generateTest():
             f.write(str(random.choice([0, 1])))
 
 
+def preamble(fs=48 * 10**3):
+    t = np.arange(0, 1, 1 / fs)
+    # f_p = np.concatenate([
+    #     np.arange(10 * 10**3 - 8 * 10**3, 10 * 10**3, 240 / 8000),
+    #     np.arange(10 * 10**3, 10 * 10**3 - 8 * 10**3, 240 / 8000)
+    # ])
+    f_p = np.concatenate(
+        [np.linspace(2000, 10000, 240),
+         np.linspace(10000, 2000, 240)])
+    # print(len(f_p))
+    omega = 2 * np.pi * integrate.cumulative_trapezoid(f_p, t[0:480])
+    return np.sin(omega).astype(np.float32).tobytes()
+
+
 #convert bit stream to frame list
-def HDLC_framing(bit_stream: str, frame_len: int):
+def framing(
+    bit_stream: str,
+    frame_len: int,
+    signal0: bytes,
+    signal1: bytes,
+):
     # seq = [0, 1, 1, 1, 1, 1, 1, 0]
     # return list(map(lambda x: signal0 if x == 0 else signal1, seq))
     temp = [
         bit_stream[i:i + frame_len]
         for i in range(0, len(bit_stream), frame_len)
     ]
-    sequence = '01111110'
+    preamble_ = preamble()
 
-    # insert 0 after any consecutive 1s
-    def add_0(data_str: str):
-        count = 0
-        res = ''
-        for bit in data_str:
-            res += bit
-            if bit == '1':
-                count += 1
-            if count == 5:
-                res += '0'
-                count = 0
-        return res
+    def frame2bytes(str_frame: str, signal0: bytes, signal1: bytes):
+        temp = b''
+        for bit in str_frame:
+            temp += signal0 if bit == '0' else signal1
+        return temp
 
+    #preamble
     return list(
-        map(lambda data_str: sequence + data_str + sequence,
-            map(add_0, temp)))  # add beginning and ending sequence
-
-
-def frame2bytes(str_frame: str, signal0: bytes, signal1: bytes):
-    temp = b''
-    for bit in str_frame:
-        temp += signal0 if bit == '0' else signal1
-    return temp
+        map(
+            lambda frame_str: preamble_ + frame2bytes(frame_str, signal0,
+                                                      signal1), temp))
 
 
 def Play(bit_rate=1000, carrier_wave_frequency=10000, frame_len=100):
@@ -60,10 +67,10 @@ def Play(bit_rate=1000, carrier_wave_frequency=10000, frame_len=100):
     p = pyaudio.PyAudio()
     stream = p.open(format=pyaudio.paFloat32, channels=1, rate=fs, output=True)
 
-    frame_list = HDLC_framing(bit_stream, frame_len)
+    frame_list = framing(bit_stream, frame_len, signal0, signal1)
 
     for i, frame in enumerate(frame_list):
-        stream.write(frame2bytes(frame, signal0, signal1))
+        stream.write(frame)
         # for j, bit in enumerate(frame):
         #     if bit == '0':
         #         stream.write(signal0)
