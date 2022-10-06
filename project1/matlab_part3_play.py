@@ -15,7 +15,7 @@ carrier = np.sin(2*np.pi*fc*t)
 
 f_p = np.concatenate([np.linspace(10_000-8000, 10_000, 220),
                      np.linspace(10_000, 10_000-8000, 220)])
-omega = 2*np.pi*integrate.cumtrapz(f_p, t[0:440])
+omega = 2*np.pi*integrate.cumtrapz(f_p, t[0:440], initial=0)
 preamble = np.sin(omega)
 
 for i in range(100):
