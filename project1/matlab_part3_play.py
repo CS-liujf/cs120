@@ -31,7 +31,7 @@ f_p = np.concatenate([
 omega = 2 * np.pi * integrate.cumtrapz(f_p, t[0:440], initial=0)
 preamble = np.sin(omega)
 
-for frame in frames:
+for i, frame in enumerate(frames):
     frame_wave = np.zeros(100 * 44)
     for j in range(len(frame)):
         frame_wave[j * 44:44 +
@@ -39,7 +39,7 @@ for frame in frames:
 
     frame_wave_pre = np.concatenate([preamble, frame_wave])
     inter_space = np.zeros(random.randint(0, 100))
-    output_frame = np.concatenate([inter_space, frame_wave])
+    output_frame = np.concatenate([inter_space, frame_wave_pre])
     inter_space = np.zeros(random.randint(0, 100))
     output_frame: NDArray = np.concatenate([output_frame, inter_space])
     output_track.append(output_frame.astype(np.float32))
