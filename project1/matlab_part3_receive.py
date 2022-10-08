@@ -64,15 +64,17 @@ def smooth(a, WSZ):
     return np.concatenate((start, out0, stop))
 
 
-PREAMBLE_TRY_LENGTH = 4500
-PREAMBLE_SIMILAR = 0.99
+PREAMBLE_TRY_LENGTH = 800
+PREAMBLE_SIMILAR = 0.8
 
 preamble = gene_preamble()
 preamble_len = len(preamble)  # 440
 pa = pyaudio.PyAudio()
 data = record(pa)
 data_len = len(data)
-max_energy = np.correlate(preamble, preamble)[0]
+corr = np.correlate(preamble, data)
+max_energy = max(corr)
+print("max_energy:", max_energy)
 
 index = 0
 final_bits = []
@@ -82,13 +84,14 @@ for _ in range(BIT_NUMBER//BODY_BIT_NUMBER):
     # package sync
     while True:
         if index >= data_len-preamble_len-44*100:
-            raise
+            print("final round:",_,"Which should be 100")
+            break
         corr = np.correlate(data[index:index+PREAMBLE_TRY_LENGTH], preamble)
         offset = -1
-        for i, cor in enumerate(corr):
-            if cor/max_energy >= PREAMBLE_SIMILAR:
-                offset = i
-                break
+        max_index = np.argmax(corr)
+        if corr[max_index]/max_energy >= PREAMBLE_SIMILAR:
+            print("similarity:", corr[max_index]/max_energy)
+            offset = max_index
         if offset == -1:
             # continue match
             index += PREAMBLE_TRY_LENGTH-preamble_len
