@@ -15,7 +15,7 @@ def smooth(a, WSZ):
 
 
 fs = 44100
-duration = 13
+duration = 12
 
 t = np.arange(0, 1, 1 / 44100)
 fc = 10 * (10**3)
@@ -47,6 +47,7 @@ state = 0
 
 final_bits = []
 
+print(len(sound_track))
 for i, bit in enumerate(sound_track):
     current_sample = bit
 
@@ -78,6 +79,8 @@ for i, bit in enumerate(sound_track):
                 decodeFIFO_power_bit[j] = sum(
                     decodeFIFO_removecarrier[10 + j * 44:30 + j * 44])
             final_bits += [int(x) for x in decodeFIFO_power_bit > 0]
+            start_index = 0
+            decodeFIFO = []
             state = 0
 
 with open('output.txt', 'w') as f:
