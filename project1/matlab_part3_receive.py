@@ -1,3 +1,4 @@
+import time
 import numpy as np
 from scipy import integrate
 import sounddevice as sd
@@ -5,7 +6,7 @@ import soundfile as sf
 
 F = 48000
 CHANNELS = 1
-total_duration = 13
+total_duration = 14
 
 BIT_NUMBER = 10_000  # total 10000 bits
 BODY_BIT_NUMBER = 100
@@ -55,12 +56,15 @@ def smooth(a, WSZ):
 
 
 PREAMBLE_TRY_LENGTH = 800
-PREAMBLE_SIMILAR = 0.7
+PREAMBLE_SIMILAR = 0.6
+
+start_time = time.time()
 
 preamble = gene_preamble()
 preamble_len = len(preamble)  # 440
 data = record()
 data_len = len(data)
+print('datalen:',data_len)
 corr = np.correlate(preamble, data)
 max_energy = max(corr)
 print("max_energy:", max_energy)
@@ -72,7 +76,7 @@ for _ in range(BIT_NUMBER//BODY_BIT_NUMBER):
         break
     # package sync
     while True:
-        if index >= data_len-preamble_len-44*100:
+        if index > data_len-preamble_len-44*100:
             print("final round:", _, "Which should be 100")
             break
         corr = np.correlate(data[index:index+PREAMBLE_TRY_LENGTH], preamble)
@@ -98,3 +102,4 @@ for _ in range(BIT_NUMBER//BODY_BIT_NUMBER):
 
 with open('output.txt', 'w') as f:
     f.write(''.join([str(x) for x in final_bits]))
+print("total time:", time.time()-start_time)
