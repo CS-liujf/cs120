@@ -3,24 +3,25 @@ from numpy.typing import NDArray
 from scipy import integrate
 import pyaudio
 import random
+import soundfile as sf
 
 
 def read_data():
-    with open('./INPUT.TXT', 'r') as f:
+    with open('input.txt', 'r') as f:
         bit_stream = f.read()
 
     temp = [int(bit) for bit in bit_stream]
-    # print(temp[:10])
     return [temp[i:i + 100] for i in range(0, len(temp), 100)]
 
 
 frames = read_data()
 
 second = 0.001
-f = 44100
-fc = 10_000
+f = 48000
+fc = 4_000
 
 output_track: list[NDArray] = []
+output_track.append(np.zeros(random.randint(200, 201)))
 t = np.arange(0, 1, 1 / f)
 carrier = np.sin(2 * np.pi * fc * t)
 
@@ -38,11 +39,11 @@ for i, frame in enumerate(frames):
                    j * 44] = carrier[j * 44:44 + j * 44] * (frame[j] * 2 - 1)
 
     frame_wave_pre = np.concatenate([preamble, frame_wave])
-    inter_space = np.zeros(random.randint(0, 100))
-    output_frame = np.concatenate([inter_space, frame_wave_pre])
-    inter_space = np.zeros(random.randint(0, 100))
-    output_frame: NDArray = np.concatenate([output_frame, inter_space])
+    inter_space = np.zeros(random.randint(200, 400))
+    output_frame: NDArray = np.concatenate([frame_wave_pre, inter_space])
     output_track.append(output_frame.astype(np.float32))
+
+sf.write('temp_out.wav', np.concatenate(output_track), samplerate=f)
 
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paFloat32, channels=1, rate=f, output=True)

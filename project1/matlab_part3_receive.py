@@ -1,22 +1,19 @@
-import struct
 import numpy as np
 from scipy import integrate
-import pyaudio
+import sounddevice as sd
+import soundfile as sf
 
-F = 44100
-CHUNK = 1024
-FORMAT = pyaudio.paFloat32
+F = 48000
 CHANNELS = 1
-total_duration = 12
+total_duration = 13
 
 BIT_NUMBER = 10_000  # total 10000 bits
 BODY_BIT_NUMBER = 100
 
 second = 0.001
-f = 44100
-fc = 10_000
+fc = 4_000
 
-t = np.arange(0, 1, 1 / f)
+t = np.arange(0, 1, 1 / F)
 carrier = np.sin(2 * np.pi * fc * t)
 
 
@@ -30,27 +27,20 @@ def gene_preamble():
     return np.sin(omega)
 
 
-def record(pa: pyaudio.PyAudio):
+def record():
     '''
     Record audio and store into wav file.
     '''
-    stream = pa.open(rate=F,
-                     channels=CHANNELS,
-                     format=FORMAT,
-                     input=True,
-                     frames_per_buffer=CHUNK)
-    frames = []
     print('Recording...')
-    for _ in range(0, int(F * total_duration / CHUNK)):
-        frames.append(stream.read(CHUNK))
+    data = sd.rec(int(F*total_duration), samplerate=F,
+                  channels=CHANNELS, blocking=True, dtype='float32')
     print('Recording finished.')
 
-    stream.stop_stream()
-    stream.close()
+    sf.write('tmp_received.wav', data, 48000)
 
-    data = b''.join(frames)
-    print(len(data))
-    return np.asarray(struct.unpack_from('f'*(len(data)//4), data))
+    with sf.SoundFile('tmp_received.wav') as wf:
+        data = wf.read(dtype=np.float32)
+    return data
 
 
 def smooth(a, WSZ):
@@ -65,12 +55,11 @@ def smooth(a, WSZ):
 
 
 PREAMBLE_TRY_LENGTH = 800
-PREAMBLE_SIMILAR = 0.8
+PREAMBLE_SIMILAR = 0.7
 
 preamble = gene_preamble()
 preamble_len = len(preamble)  # 440
-pa = pyaudio.PyAudio()
-data = record(pa)
+data = record()
 data_len = len(data)
 corr = np.correlate(preamble, data)
 max_energy = max(corr)
@@ -84,7 +73,7 @@ for _ in range(BIT_NUMBER//BODY_BIT_NUMBER):
     # package sync
     while True:
         if index >= data_len-preamble_len-44*100:
-            print("final round:",_,"Which should be 100")
+            print("final round:", _, "Which should be 100")
             break
         corr = np.correlate(data[index:index+PREAMBLE_TRY_LENGTH], preamble)
         offset = -1
