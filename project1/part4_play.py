@@ -69,6 +69,7 @@ class Hamming():
 
     @classmethod
     def detectError(self, data: str):
+        # return the fault bit's index
         n = len(data)
         nr = Hamming.calcRedundantBits(n)
         res = 0
