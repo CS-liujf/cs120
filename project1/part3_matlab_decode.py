@@ -18,7 +18,7 @@ fs = 44100
 duration = 12
 
 t = np.arange(0, 1, 1 / 44100)
-fc = 10 * (10**3)
+fc = (10**3)
 carrier = np.sin(2 * np.pi * fc * t)
 
 f_p = np.concatenate([

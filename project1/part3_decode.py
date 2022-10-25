@@ -3,7 +3,7 @@ import pyaudio
 import numpy as np
 import time
 import wave
-from numpy._typing import NDArray
+from numpy.typing import NDArray
 
 CARRIER_WAVE_FREQ = 10_000  # Hz
 CARRIER_ANGLE_FREQ = 2 * np.pi * CARRIER_WAVE_FREQ  # angle=2·pi·w

@@ -10,7 +10,7 @@ def generateTest():
             f.write(str(random.choice([0, 1])))
 
 
-def generate_preamble(fs=44.1 * 10**3):
+def generate_preamble(fs=44100):
     t = np.arange(0, 1, 1 / fs)
     # f_p = np.concatenate(
     #     [np.linspace(2000, 10000, 240),
