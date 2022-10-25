@@ -131,3 +131,6 @@ dmypy.json
 *.wav
 test.py
 *.pdf
+test/
+lcq*
+OUTPUT.txt
