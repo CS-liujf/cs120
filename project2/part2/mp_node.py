@@ -1,20 +1,28 @@
-from multiprocessing import Queue, Pipe, Process, set_forkserver_preload
+from multiprocessing import Queue, Pipe, Process
+from multiprocessing.connection import PipeConnection
+from time import time
 from typing import Any, Callable, Iterable
+import queue as standard_queue
 
 
 class MAC(Process):
     def __init__(self, MAC_Tx_queue: Queue, MAC_Rx_queue: Queue,
-                 MAC_Tx_pipe: Pipe) -> None:
+                 MAC_Tx_pipe: PipeConnection) -> None:
         super().__init__()
-        MAC_Tx_queue = MAC_Tx_queue
-        MAC_Rx_queue = MAC_Rx_queue
-        MAC_Tx_pipe = MAC_Tx_pipe
+        self.MAC_Tx_queue = MAC_Tx_queue
+        self.MAC_Rx_queue = MAC_Rx_queue
+        self.MAC_Tx_pipe = MAC_Tx_pipe
 
     def run(self):
         data_list = self.read_data()
         mac_frame_list = [self.gen_frame(payload) for payload in data_list]
-        for idx, mac_frame in enumerate(mac_frame_list):
-            pass
+        try:
+            for idx, mac_frame in enumerate(mac_frame_list):
+                self.MAC_Tx_queue.put(mac_frame, timeout=1)  #time out if 1s
+                self.MAC_Tx_pipe.poll(1)  # wait for Tx_done
+                # time1 = time.time()
+        except standard_queue.Full:
+            print('link error')
         print('MAC runs')
 
     def read_data(self):
@@ -42,13 +50,19 @@ class MAC(Process):
 
 
 class Tx(Process):
-    def __init__(self, MAC_Tx_queue: Queue, Tx_MAC_pipe: Pipe) -> None:
+    def __init__(self, MAC_Tx_queue: Queue,
+                 Tx_MAC_pipe: PipeConnection) -> None:
         super().__init__()
         self.MAC_Tx_queue = MAC_Tx_queue
         self.Tx_MAC_pipe = Tx_MAC_pipe
 
     def run(self):
         print('Tx runs')
+        try:
+            while True:
+                mac_frame = self.MAC_Tx_queue.get(timeout=1)
+        except standard_queue.Empty:
+            print('link error')
 
 
 class Rx(Process):
