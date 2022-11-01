@@ -5,6 +5,14 @@ from typing import Any, Callable, Iterable
 import queue as standard_queue
 
 
+class LinkError(Exception):
+    def __init__(self, msg: str):
+        self.message = msg
+
+    def __str__(self):
+        return f'{self.message}: Link Error!'
+
+
 class MAC(Process):
     def __init__(self, MAC_Tx_queue: Queue, MAC_Rx_queue: Queue,
                  MAC_Tx_pipe: PipeConnection) -> None:
@@ -14,16 +22,20 @@ class MAC(Process):
         self.MAC_Tx_pipe = MAC_Tx_pipe
 
     def run(self):
+        print('MAC runs')
         data_list = self.read_data()
         mac_frame_list = [self.gen_frame(payload) for payload in data_list]
         try:
             for idx, mac_frame in enumerate(mac_frame_list):
                 self.MAC_Tx_queue.put(mac_frame, timeout=1)  #time out if 1s
-                self.MAC_Tx_pipe.poll(1)  # wait for Tx_done
-                # time1 = time.time()
+                if not self.MAC_Tx_pipe.poll(1):  # wait for Tx_done
+                    raise LinkError('MAC')
+
+                # how about ACK?
         except standard_queue.Full:
-            print('link error')
-        print('MAC runs')
+            print('MAC:link error')
+        except LinkError as e:
+            print(e)
 
     def read_data(self):
         with open('./INPUT.bin', 'rb') as f:
