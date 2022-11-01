@@ -16,27 +16,50 @@ class LinkError(Exception):
 
 
 class MAC(Process):
-    def __init__(self, MAC_Tx_queue: Queue, MAC_Rx_queue: Queue,
-                 MAC_Tx_pipe: PipeConnection) -> None:
+    def __init__(self, ) -> None:
         super().__init__()
+        MAC_Tx_queue = Queue(maxsize=1)
+        MAC_Rx_queue = Queue(maxsize=10)
+        MAC_Tx_pipe, Tx_MAC_pipe = Pipe()
         self.MAC_Tx_queue = MAC_Tx_queue
         self.MAC_Rx_queue = MAC_Rx_queue
         self.MAC_Tx_pipe = MAC_Tx_pipe
+        self.Tx_MAC_pipe = Tx_MAC_pipe
+        self.MAC_Rx_pipe, self.Rx_MAC_pipe = Pipe()
 
     def run(self):
         print('MAC runs')
+        self.tx = Tx(self.MAC_Tx_queue, self.Tx_MAC_pipe)
+        self.rx = Rx(self.MAC_Rx_queue, self.Rx_MAC_pipe)
+        self.tx.start()
+        self.rx.start()
         data_list = read_data()
         mac_frame_list = [self.gen_frame(payload) for payload in data_list]
         try:
             for idx, mac_frame in enumerate(mac_frame_list):
-                self.MAC_Tx_queue.put(mac_frame, timeout=1)  #time out if 1s
-                self.MAC_Tx_pipe.recv()
 
                 # how about ACK?
+                # If MAC did not recieve an ACK in a given time slot, then it should resend this current frame.
+                # If the times of resending surpass a threshhold, then we can say Link Error
+                for i in range(6):
+                    self.MAC_Tx_queue.put(mac_frame)
+                    self.MAC_Tx_pipe.recv()
+                    if self.MAC_Rx_pipe.poll(1):
+                        # this means that we receive ACK
+                        break
+                else:  # this means that surpassing the threashhold, raise Link Error
+                    raise LinkError('MAC')
+
         except standard_queue.Full as e:
-            print(f'.MAC:link error')
+            print(f'.MAC:link error occurs while sending')
         except LinkError as e:
-            print(e)
+            print(e, end='')
+            print(f'在发送{idx} frame')
+
+        # 添加判断，如果有数据要收，则从Rx中取数据并写入self.store_data中
+
+        self.tx.terminate()
+        self.rx.terminate()
 
     def gen_frame(self,
                   payload: list[int],
@@ -52,6 +75,11 @@ class MAC(Process):
         else:
             pass
 
+    def terminate(self) -> None:
+        self.tx.terminate()
+        self.rx.terminate()
+        return super().terminate()
+
 
 class Tx(Process):
     def __init__(self, MAC_Tx_queue: Queue,
@@ -62,17 +90,17 @@ class Tx(Process):
 
     def run(self):
         print('Tx runs')
-        # count = 0
+        count = 0
         try:
             t1 = time.time()
             with sd.Stream(samplerate=48000, channels=1, dtype='float32') as f:
-                while mac_frame := self.MAC_Tx_queue.get(timeout=2):
+                while mac_frame := self.MAC_Tx_queue.get():
                     phy_frame = gen_PHY_frame(mac_frame)
                     f.write(phy_frame)
-                    # count += 1
+                    count += 1
                     self.Tx_MAC_pipe.send('Tx Done')
                     # if count % 100 == 0:
-                    # print(count)
+                    print(count)
         except standard_queue.Empty:
             t2 = time.time()
             print(f'Tx time:{t2-t1}')
@@ -80,32 +108,45 @@ class Tx(Process):
 
 
 class Rx(Process):
-    def __init__(self, MAC_Rx_queue: Queue) -> None:
+    def __init__(self, MAC_Rx_queue: Queue,
+                 Rx_MAC_pipe: PipeConnection) -> None:
         super().__init__()
         self.MAC_Rx_queue = MAC_Rx_queue
+        self.Rx_MAC_pipe = Rx_MAC_pipe
 
     def run(self) -> None:
         print('Rx runs')
+        while True:
+            pass
+            #这里要时刻监听收到的数据，并判断是否为ACK，若为ACK则调用self.Rx_MAC_pipe.send('Receive ACK')
+            #若是正常数据则调用sel.MAC_Rx_queue.put(data)
+
+        # with sd.InputStream(samplerate=f):
+        #     while True:
+        #         pass
 
 
 def main():
-    MAC_Tx_queue = Queue(maxsize=1)
-    MAC_Rx_queue = Queue(maxsize=1)
-    MAC_Tx_pipe, Tx_MAC_pipe = Pipe()
-    mac = MAC(MAC_Tx_queue, MAC_Rx_queue, MAC_Tx_pipe)
-    tx = Tx(MAC_Tx_queue, Tx_MAC_pipe)
-    rx = Rx(MAC_Rx_queue)
+    # MAC_Tx_queue = Queue(maxsize=1)
+    # MAC_Rx_queue = Queue(maxsize=1)
+    # MAC_Tx_pipe, Tx_MAC_pipe = Pipe()
+    # mac = MAC(MAC_Tx_queue, MAC_Rx_queue, MAC_Tx_pipe)
+    # tx = Tx(MAC_Tx_queue, Tx_MAC_pipe)
+    # rx = Rx(MAC_Rx_queue)
 
+    # mac.start()
+    # tx.start()
+    # rx.start()
+
+    # t1 = time.time()
+    # mac.join()
+    # tx.join()
+    # rx.join()
+    # t2 = time.time()
+    # print(t2 - t1)
+    mac = MAC()
     mac.start()
-    tx.start()
-    rx.start()
-
-    t1 = time.time()
     mac.join()
-    tx.join()
-    rx.join()
-    t2 = time.time()
-    print(t2 - t1)
 
 
 if __name__ == '__main__':
