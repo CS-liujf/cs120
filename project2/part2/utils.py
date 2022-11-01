@@ -2,8 +2,6 @@ import numpy as np
 from scipy import integrate
 import random
 
-from project1.lcq_part3_decode import Preamble
-
 second = 0.001
 f = 48000
 fc = 4_000
