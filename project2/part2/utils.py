@@ -10,6 +10,15 @@ t = np.arange(0, 1, 1 / f)
 carrier = np.sin(2 * np.pi * fc * t)
 
 
+def read_data():
+    with open('./INPUT.bin', 'rb') as f:
+        res = f.read()
+        bit_stream = ''.join(['{0:08b}'.format(x) for _, x in enumerate(res)])
+
+        temp = [int(bit) for bit in bit_stream]
+        return [temp[i:i + 100] for i in range(0, len(temp), 100)]
+
+
 def gen_preamble():
     f_p = np.concatenate([
         np.linspace(10_000 - 8000, 10_000, 220),
@@ -30,4 +39,4 @@ def gen_PHY_frame(mac_frame: list[int]) -> np.ndarray:
                                       bit_len] * (mac_frame[j] * 2 - 1)
     frame_wave_pre = np.concatenate([preamble, frame_wave])
     inter_space = np.zeros(random.randint(0, 50))
-    return np.concatenate([frame_wave_pre, inter_space])
+    return np.concatenate([frame_wave_pre, inter_space]).astype(np.float32)

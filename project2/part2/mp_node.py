@@ -1,8 +1,10 @@
 from multiprocessing import Queue, Pipe, Process
 from multiprocessing.connection import PipeConnection
-from time import time
+import time
 from typing import Any, Callable, Iterable
 import queue as standard_queue
+import sounddevice as sd
+from utils import gen_PHY_frame, f, read_data
 
 
 class LinkError(Exception):
@@ -23,28 +25,23 @@ class MAC(Process):
 
     def run(self):
         print('MAC runs')
-        data_list = self.read_data()
+        data_list = read_data()
         mac_frame_list = [self.gen_frame(payload) for payload in data_list]
+        print(len(mac_frame_list))
         try:
             for idx, mac_frame in enumerate(mac_frame_list):
                 self.MAC_Tx_queue.put(mac_frame, timeout=1)  #time out if 1s
                 if not self.MAC_Tx_pipe.poll(1):  # wait for Tx_done
                     raise LinkError('MAC')
 
+                if idx == 100:
+                    break
+
                 # how about ACK?
         except standard_queue.Full:
             print('MAC:link error')
         except LinkError as e:
             print(e)
-
-    def read_data(self):
-        with open('./INPUT.bin', 'rb') as f:
-            res = f.read()
-            bit_stream = ''.join(
-                ['{0:08b}'.format(x) for _, x in enumerate(res)])
-
-        temp = [int(bit) for bit in bit_stream]
-        return [temp[i:i + 100] for i in range(0, len(temp), 100)]
 
     def gen_frame(self,
                   payload: list[int],
@@ -71,9 +68,15 @@ class Tx(Process):
     def run(self):
         print('Tx runs')
         try:
+            t1 = time.time()
             while True:
                 mac_frame = self.MAC_Tx_queue.get(timeout=1)
+                phy_frame = gen_PHY_frame(mac_frame)
+                # sd.play(phy_frame, samplerate=f, blocking=True)
+                self.Tx_MAC_pipe.send('Tx Done')
         except standard_queue.Empty:
+            t2 = time.time()
+            print(f'Tx time:{t2-t1}')
             print('link error')
 
 
@@ -97,6 +100,13 @@ def main():
     mac.start()
     tx.start()
     rx.start()
+
+    t1 = time.time()
+    mac.join()
+    tx.join()
+    rx.join()
+    t2 = time.time()
+    print(t2 - t1)
 
 
 if __name__ == '__main__':
