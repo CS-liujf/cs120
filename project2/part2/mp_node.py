@@ -27,19 +27,14 @@ class MAC(Process):
         print('MAC runs')
         data_list = read_data()
         mac_frame_list = [self.gen_frame(payload) for payload in data_list]
-        print(len(mac_frame_list))
         try:
             for idx, mac_frame in enumerate(mac_frame_list):
                 self.MAC_Tx_queue.put(mac_frame, timeout=1)  #time out if 1s
-                if not self.MAC_Tx_pipe.poll(1):  # wait for Tx_done
-                    raise LinkError('MAC')
-
-                if idx == 100:
-                    break
+                self.MAC_Tx_pipe.recv()
 
                 # how about ACK?
-        except standard_queue.Full:
-            print('MAC:link error')
+        except standard_queue.Full as e:
+            print(f'.MAC:link error')
         except LinkError as e:
             print(e)
 
@@ -67,13 +62,17 @@ class Tx(Process):
 
     def run(self):
         print('Tx runs')
+        # count = 0
         try:
             t1 = time.time()
-            while True:
-                mac_frame = self.MAC_Tx_queue.get(timeout=1)
-                phy_frame = gen_PHY_frame(mac_frame)
-                # sd.play(phy_frame, samplerate=f, blocking=True)
-                self.Tx_MAC_pipe.send('Tx Done')
+            with sd.Stream(samplerate=48000, channels=1, dtype='float32') as f:
+                while mac_frame := self.MAC_Tx_queue.get(timeout=2):
+                    phy_frame = gen_PHY_frame(mac_frame)
+                    f.write(phy_frame)
+                    # count += 1
+                    self.Tx_MAC_pipe.send('Tx Done')
+                    # if count % 100 == 0:
+                    # print(count)
         except standard_queue.Empty:
             t2 = time.time()
             print(f'Tx time:{t2-t1}')
