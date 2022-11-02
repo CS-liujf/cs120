@@ -41,6 +41,8 @@ class MAC(Process):
                 # how about ACK?
                 # If MAC did not recieve an ACK in a given time slot, then it should resend this current frame.
                 # If the times of resending surpass a threshhold, then we can say Link Error
+                # self.MAC_Tx_queue.put(mac_frame)
+                # self.MAC_Tx_pipe.recv()
                 for i in range(6):
                     self.MAC_Tx_queue.put(mac_frame)
                     self.MAC_Tx_pipe.recv()
@@ -89,22 +91,22 @@ class Tx(Process):
         self.Tx_MAC_pipe = Tx_MAC_pipe
 
     def run(self):
+        import pyaudio
+        self.stream = pyaudio.PyAudio().open(format=pyaudio.paFloat32,
+                                             rate=f,
+                                             output=True,
+                                             channels=1,
+                                             frames_per_buffer=1)
         print('Tx runs')
-        count = 0
-        try:
-            t1 = time.time()
-            with sd.Stream(samplerate=48000, channels=1, dtype='float32') as f:
-                while mac_frame := self.MAC_Tx_queue.get():
-                    phy_frame = gen_PHY_frame(mac_frame)
-                    f.write(phy_frame)
-                    count += 1
-                    self.Tx_MAC_pipe.send('Tx Done')
-                    # if count % 100 == 0:
-                    print(count)
-        except standard_queue.Empty:
-            t2 = time.time()
-            print(f'Tx time:{t2-t1}')
-            print('link error')
+        # count = 0
+        t1 = time.time()
+        while True:
+            mac_frame = self.MAC_Tx_queue.get()
+            phy_frame = gen_PHY_frame(mac_frame)
+            self.stream.write(phy_frame.tobytes())
+            self.Tx_MAC_pipe.send('Tx Done')
+            # count += 1
+            # print(count)
 
 
 class Rx(Process):
