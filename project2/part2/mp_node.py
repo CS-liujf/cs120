@@ -1,10 +1,11 @@
-from multiprocessing import Queue, Pipe, Process
+from multiprocessing import Queue, Pipe, Process, Barrier
+from multiprocessing.synchronize import Barrier as Barrier_
 from multiprocessing.connection import PipeConnection
 import time
 from typing import Any, Callable, Iterable
 import queue as standard_queue
 import sounddevice as sd
-from utils import gen_PHY_frame, f, read_data
+from utils import gen_PHY_frame, f, read_data, temp
 
 
 class LinkError(Exception):
@@ -15,12 +16,18 @@ class LinkError(Exception):
         return f'{self.message}: Link Error!'
 
 
+def print_start(msg: str = ''):
+    print('transmittion starts')
+
+
 class MAC(Process):
     def __init__(self, ) -> None:
         super().__init__()
         MAC_Tx_queue = Queue(maxsize=1)
         MAC_Rx_queue = Queue(maxsize=10)
         MAC_Tx_pipe, Tx_MAC_pipe = Pipe()
+        barrier = Barrier(3, print_start)
+        self.barrier = barrier
         self.MAC_Tx_queue = MAC_Tx_queue
         self.MAC_Rx_queue = MAC_Rx_queue
         self.MAC_Tx_pipe = MAC_Tx_pipe
@@ -28,13 +35,14 @@ class MAC(Process):
         self.MAC_Rx_pipe, self.Rx_MAC_pipe = Pipe()
 
     def run(self):
-        print('MAC runs')
-        self.tx = Tx(self.MAC_Tx_queue, self.Tx_MAC_pipe)
-        self.rx = Rx(self.MAC_Rx_queue, self.Rx_MAC_pipe)
+        self.tx = Tx(self.MAC_Tx_queue, self.Tx_MAC_pipe, self.barrier)
+        self.rx = Rx(self.MAC_Rx_queue, self.Rx_MAC_pipe, self.barrier)
         self.tx.start()
         self.rx.start()
         data_list = read_data()
         mac_frame_list = [self.gen_frame(payload) for payload in data_list]
+        print('MAC runs. Waiting for Tx and Rx...')
+        self.barrier.wait()
         try:
             for idx, mac_frame in enumerate(mac_frame_list):
 
@@ -84,11 +92,12 @@ class MAC(Process):
 
 
 class Tx(Process):
-    def __init__(self, MAC_Tx_queue: Queue,
-                 Tx_MAC_pipe: PipeConnection) -> None:
+    def __init__(self, MAC_Tx_queue: Queue, Tx_MAC_pipe: PipeConnection,
+                 barrier: Barrier_) -> None:
         super().__init__()
         self.MAC_Tx_queue = MAC_Tx_queue
         self.Tx_MAC_pipe = Tx_MAC_pipe
+        self.barrier = barrier
 
     def run(self):
         import pyaudio
@@ -98,11 +107,13 @@ class Tx(Process):
                                              channels=1,
                                              frames_per_buffer=1)
         print('Tx runs')
+        self.barrier.wait()
         # count = 0
         t1 = time.time()
         while True:
             mac_frame = self.MAC_Tx_queue.get()
             phy_frame = gen_PHY_frame(mac_frame)
+            print(len(phy_frame))
             self.stream.write(phy_frame.tobytes())
             self.Tx_MAC_pipe.send('Tx Done')
             # count += 1
@@ -110,16 +121,26 @@ class Tx(Process):
 
 
 class Rx(Process):
-    def __init__(self, MAC_Rx_queue: Queue,
-                 Rx_MAC_pipe: PipeConnection) -> None:
+    def __init__(self, MAC_Rx_queue: Queue, Rx_MAC_pipe: PipeConnection,
+                 barrier: Barrier_) -> None:
         super().__init__()
         self.MAC_Rx_queue = MAC_Rx_queue
         self.Rx_MAC_pipe = Rx_MAC_pipe
+        self.barrier = barrier
 
     def run(self) -> None:
+        import pyaudio
+        self.stream = pyaudio.PyAudio().open(format=pyaudio.paFloat32,
+                                             rate=f,
+                                             input=True,
+                                             channels=1,
+                                             frames_per_buffer=1)
         print('Rx runs')
+        self.barrier.wait()
         while True:
-            pass
+            stream_data = self.stream.read(1024)
+            temp(stream_data)
+            # np_data=
             #这里要时刻监听收到的数据，并判断是否为ACK，若为ACK则调用self.Rx_MAC_pipe.send('Receive ACK')
             #若是正常数据则调用sel.MAC_Rx_queue.put(data)
 
