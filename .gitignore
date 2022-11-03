@@ -134,3 +134,4 @@ test.py
 test/
 lcq*
 OUTPUT.txt
+.idea
