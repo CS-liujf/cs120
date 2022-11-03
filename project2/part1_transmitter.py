@@ -29,12 +29,13 @@ frames.append([random.random() for _ in range(100)])
 second = 0.001
 f = 48000
 fc = 4_000
-bit_len = 2
+bit_len = 6
 
 output_track: list[NDArray] = []
 output_track.append(np.zeros(random.randint(200, 201)))
 t = np.arange(0, 1, 1 / f)
-carrier = np.sin(2 * np.pi * fc * t)
+# carrier = np.sin(2 * np.pi * fc * t)
+carrier = np.array([-1, -1, -1, 1, 1, 1])
 
 f_p = np.concatenate([
     np.linspace(10_000 - 8000, 10_000, 220),
@@ -47,8 +48,7 @@ for i, frame in enumerate(frames):
     frame_wave = np.zeros(len(frame) * bit_len)
     for j in range(len(frame)):
         frame_wave[j * bit_len:(j + 1) *
-                   bit_len] = carrier[j * bit_len:(j + 1) *
-                                      bit_len] * (frame[j] * 2 - 1)
+                   bit_len] = carrier * (frame[j] * 2 - 1) * 0.5
 
     frame_wave_pre = np.concatenate([preamble, frame_wave])
     inter_space = np.zeros(random.randint(0, 50))
@@ -58,7 +58,7 @@ for i, frame in enumerate(frames):
 output_track.append(np.array([random.random() for _ in range(200)]))
 
 # sf.write('temp_out.wav', np.concatenate(output_track), samplerate=f)
-
+print('start')
 sd.play(np.concatenate(output_track), samplerate=f, blocking=True)
 # p = pyaudio.PyAudio()
 # stream = p.open(format=pyaudio.paFloat32, channels=1, rate=f, output=True)
