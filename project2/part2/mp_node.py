@@ -48,6 +48,8 @@ class MAC(Process):
                         self.MAC_Tx_queue.put(mac_frame)
                         self.MAC_Tx_pipe.recv()
                         if self.MAC_Rx_pipe.poll(1):
+                            #in fact we should check this ACK because maybe it is not corresponding to the current Id
+                            # but now, since we transmit only one frame, this check can obmitted.
                             # this means that we receive ACK
                             break
                     else:  # this means that surpassing the threashhold, raise Link Error
@@ -60,30 +62,6 @@ class MAC(Process):
                     pass
         except LinkError as e:
             print(e)
-        # try:
-        #     for idx, mac_frame in enumerate(mac_frame_list):
-
-        #         # how about ACK?
-        #         # If MAC did not recieve an ACK in a given time slot, then it should resend this current frame.
-        #         # If the times of resending surpass a threshhold, then we can say Link Error
-        #         # self.MAC_Tx_queue.put(mac_frame)
-        #         # self.MAC_Tx_pipe.recv()
-        #         for i in range(6):
-        #             self.MAC_Tx_queue.put(mac_frame)
-        #             self.MAC_Tx_pipe.recv()
-        #             if self.MAC_Rx_pipe.poll(1):
-        #                 # this means that we receive ACK
-        #                 break
-        #         else:  # this means that surpassing the threashhold, raise Link Error
-        #             raise LinkError('MAC')
-
-        # except standard_queue.Full as e:
-        #     print(f'.MAC:link error occurs while sending')
-        # except LinkError as e:
-        #     print(e, end='')
-        #     print(f'在发送{idx} frame')
-
-        # 添加判断，如果有数据要收，则从Rx中取数据并写入self.store_data中
 
         self.close_Tx_and_Rx()
 
@@ -170,23 +148,6 @@ class Rx(Process):
 
 
 def main():
-    # MAC_Tx_queue = Queue(maxsize=1)
-    # MAC_Rx_queue = Queue(maxsize=1)
-    # MAC_Tx_pipe, Tx_MAC_pipe = Pipe()
-    # mac = MAC(MAC_Tx_queue, MAC_Rx_queue, MAC_Tx_pipe)
-    # tx = Tx(MAC_Tx_queue, Tx_MAC_pipe)
-    # rx = Rx(MAC_Rx_queue)
-
-    # mac.start()
-    # tx.start()
-    # rx.start()
-
-    # t1 = time.time()
-    # mac.join()
-    # tx.join()
-    # rx.join()
-    # t2 = time.time()
-    # print(t2 - t1)
     Network_Link_queue = Queue(maxsize=10)
     data_list = read_data()
     mac = MAC(Network_Link_queue)
