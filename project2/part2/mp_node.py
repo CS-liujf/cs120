@@ -5,7 +5,7 @@ import time
 from typing import Any, Callable, Iterable
 import queue as standard_queue
 import sounddevice as sd
-from utils import gen_PHY_frame, f, read_data, temp
+from utils import gen_PHY_frame, f, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id
 
 
 class LinkError(Exception):
@@ -29,6 +29,7 @@ class MAC(Process):
         self.MAC_Tx_queue = Queue(maxsize=1)
         self.MAC_Rx_pipe, self.Rx_MAC_pipe = Pipe()
         self.MAC_Rx_queue = Queue(maxsize=10)
+        self.cur_idx = 0
 
     def run(self):
         self.tx = Tx(self.MAC_Tx_queue, self.Tx_MAC_pipe, self.barrier)
@@ -40,8 +41,10 @@ class MAC(Process):
         try:
             while True:
                 if not self.Network_Link_queue.empty():
+                    self.cur_idx += 1
                     payload = self.Network_Link_queue.get()
-                    mac_frame = self.gen_Mac_frame(payload)
+                    mac_frame = self.gen_Mac_frame(payload,
+                                                   frame_seq=self.cur_idx)
                     # If MAC did not recieve an ACK in a given time slot, then it should resend this current frame.
                     # If the times of resending surpass a threshhold, then we can say Link Error
                     for i in range(6):
@@ -51,13 +54,23 @@ class MAC(Process):
                             #in fact we should check this ACK because maybe it is not corresponding to the current Id
                             # but now, since we transmit only one frame, this check can obmitted.
                             # this means that we receive ACK
-                            break
+                            ack: str = self.MAC_Rx_pipe.recv(
+                            )  # receive an ACK like 'ACK_10'
+                            ack_idx = int(ack.split('_')[-1])
+                            if ack_idx != self.cur_idx:
+                                continue
+                            else:  # means that we get the correct ACK
+                                break
                     else:  # this means that surpassing the threashhold, raise Link Error
                         raise LinkError('MAC')
                 if not self.MAC_Rx_queue.empty():
                     ## do receive (may be write to disk ) and reply ACK
                     mac_frame = self.MAC_Rx_queue.get()
                     #check whether it is correct. If not, then we don't reply ACK. other wise put a ACK frame to the MAC_Tx_queue
+                    # check
+                    ack_frame = self.gen_Mac_frame([-1 for _ in range(100)],
+                                                   is_ACK=True)
+                    self.MAC_Tx_queue.put(ack_frame)
                     # if it is correct, put this to MAC_IP_queue for store
                     pass
         except LinkError as e:
@@ -69,6 +82,11 @@ class MAC(Process):
         self.tx.terminate()
         self.rx.terminate()
 
+    @classmethod
+    def get_seq_num():
+        pass
+
+    @classmethod
     def gen_Mac_frame(self,
                       payload: list[int],
                       frame_dest=0,
@@ -136,19 +154,22 @@ class Rx(Process):
         print('Rx runs')
         self.barrier.wait()
         while True:
-            stream_data = self.stream.read(1024)
-            temp(stream_data)
-            # np_data=
+            stream_data = self.stream.read(CHUNK)
+            if (phy_frame := extract_PHY_frame(stream_data)) is not None:
+                if (mac_frame := extract_MAC_frame(phy_frame)) is not None:
+                    # chech whther it is an ACK
+                    if (ACK_id := get_ACK_id(mac_frame)) > 0:
+                        self.Rx_MAC_pipe.send(f'ACK_{ACK_id}')
+
+                    else:
+                        self.MAC_Rx_queue.put(mac_frame)
             #这里要时刻监听收到的数据，并判断是否为ACK，若为ACK则调用self.Rx_MAC_pipe.send('Receive ACK')
             #若是正常数据则调用sel.MAC_Rx_queue.put(data)
-
-        # with sd.InputStream(samplerate=f):
-        #     while True:
-        #         pass
 
 
 def main():
     Network_Link_queue = Queue(maxsize=10)
+    # Link_Network_queue=
     data_list = read_data()
     mac = MAC(Network_Link_queue)
     mac.start()
@@ -156,7 +177,7 @@ def main():
     time.sleep(1)
     try:
         for idx, data in enumerate(data_list):
-            Network_Link_queue.put(data, timeout=5)
+            Network_Link_queue.put(data, timeout=8)
         else:
             print('transmittion end')
     except:
