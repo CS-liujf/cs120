@@ -54,7 +54,7 @@ class MAC(Process):
                             break
                     else:  # this means that surpassing the threashhold, raise Link Error
                         raise LinkError('MAC')
-                elif not self.MAC_Rx_queue.empty():
+                if not self.MAC_Rx_queue.empty():
                     ## do receive (may be write to disk ) and reply ACK
                     mac_frame = self.MAC_Rx_queue.get()
                     #check whether it is correct. If not, then we don't reply ACK. other wise put a ACK frame to the MAC_Tx_queue
