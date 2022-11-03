@@ -97,9 +97,9 @@ class Hamming():
 second = 0.001
 f = 48000
 fc = 4_000
-bit_len = 2
 t = np.arange(0, 1, 1 / f)
-carrier = np.sin(2 * np.pi * fc * t)
+baseband = np.array([-1, -1, -1, 1, 1, 1])
+bit_len = len(baseband)
 
 
 def read_data():
@@ -127,10 +127,9 @@ def gen_PHY_frame(mac_frame: list[int]) -> np.ndarray:
     frame_wave = np.zeros(len(mac_frame) * bit_len)
     for j in range(len(mac_frame)):
         frame_wave[j * bit_len:(j + 1) *
-                   bit_len] = carrier[j * bit_len:(j + 1) *
-                                      bit_len] * (mac_frame[j] * 2 - 1)
+                   bit_len] = 0.5 * (mac_frame[j] * 2 - 1) * baseband
     frame_wave_pre = np.concatenate([preamble, frame_wave])
-    inter_space = np.zeros(random.randint(50, 50))
+    inter_space = np.zeros(20)
     return np.concatenate([frame_wave_pre, inter_space]).astype(np.float32)
 
 
