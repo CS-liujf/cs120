@@ -4,11 +4,11 @@ from scipy import integrate
 import sounddevice as sd
 import soundfile as sf
 
-sd.default.device = 1
+sd.default.device = 0
 
 F = 48000
 CHANNELS = 1
-total_duration = 16
+total_duration = 14
 
 BIT_NUMBER = 50_000
 BODY_BIT_NUMBER = 100
@@ -48,7 +48,7 @@ def record():
 
 
 PREAMBLE_TRY_LENGTH = 500
-PREAMBLE_SIMILAR = 0.6
+PREAMBLE_SIMILAR = 0.8
 
 start_time = time.time()
 
@@ -59,7 +59,7 @@ preamble_len = len(preamble)  # 440
 data = record()
 data_len = len(data)
 print('datalen:', data_len)
-corr = np.correlate(preamble, data)
+corr = np.correlate(data, preamble)
 max_energy = max(corr)
 print("max_energy:", max_energy)
 
@@ -86,10 +86,12 @@ for _ in range(BIT_NUMBER // BODY_BIT_NUMBER):
             index += offset + preamble_len
             break
 
+    if index + BIT_LEN*BODY_BIT_NUMBER > data_len:
+        break
     body_data = data[index:index + BIT_LEN * BODY_BIT_NUMBER]
     decode_power_bit = np.zeros(BODY_BIT_NUMBER)
     for i in range(BODY_BIT_NUMBER):
-        decode_power_bit[i] = sum(
+        decode_power_bit[i] = np.sum(
             np.asarray(body_data[i * BIT_LEN:(i + 1) * BIT_LEN]) * SIGNAL_ONE)
     final_bits += [int(x) for x in decode_power_bit > 0]
 
