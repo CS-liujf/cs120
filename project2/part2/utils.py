@@ -2,96 +2,24 @@ from signal import signal
 import numpy as np
 from scipy import integrate
 import random
+from crc import CrcCalculator, Crc8
 
 
-class Hamming():
-    @classmethod
-    def calcRedundantBits(self, m: int):
+def CRC8_encode(data: list[int]):
+    #generate crc8 code
+    crc_calculator = CrcCalculator(Crc8.CCITT, True)
+    checksum = crc_calculator.calculate_checksum(data)
+    checksum = [int(x) for x in '{0:08b}'.format(checksum)]  # have 8 elements
+    return data + checksum
 
-        # Use the formula 2 ^ r >= m + r + 1
-        # to calculate the no of redundant bits.
-        # Iterate over 0 .. m and return the value
-        # that satisfies the equation
 
-        for i in range(m):
-            if (2**i >= m + i + 1):
-                return i
-
-    @classmethod
-    def posRedundantBits(self, data: str, r: int):
-
-        # Redundancy bits are placed at the positions
-        # which correspond to the power of 2.
-        j = 0
-        k = 1
-        m = len(data)
-        res = ''
-
-        # If position is power of 2 then insert '0'
-        # Else append the data
-        for i in range(1, m + r + 1):
-            if (i == 2**j):
-                res = res + '0'
-                j += 1
-            else:
-                res = res + data[-1 * k]
-                k += 1
-
-    # The result is reversed since positions are
-    # counted backwards. (m + r+1 ... 1)
-        return res[::-1]
-
-    @classmethod
-    def calcParityBits(self, arr, r) -> str:
-        n = len(arr)
-
-        # For finding rth parity bit, iterate over
-        # 0 to r - 1
-        for i in range(r):
-            val = 0
-            for j in range(1, n + 1):
-
-                # If position has 1 in ith significant
-                # position then Bitwise OR the array value
-                # to find parity bit value.
-                if (j & (2**i) == (2**i)):
-                    val = val ^ int(arr[-1 * j])
-                # -1 * j is given since array is reversed
-
-        # String Concatenation
-        # (0 to n - 2^r) + parity bit + (n - 2^r + 1 to n)
-            arr = arr[:n - (2**i)] + str(val) + arr[n - (2**i) + 1:]
-        return arr
-
-    @classmethod
-    def detectError(self, data: str):
-        # return the fault bit's index
-        n = len(data)
-        nr = Hamming.calcRedundantBits(n)
-        res = 0
-
-        # Calculate parity bits again
-        for i in range(nr):
-            val = 0
-            for j in range(1, n + 1):
-                if (j & (2**i) == (2**i)):
-                    val = val ^ int(data[-1 * j])
-
-        # Create a binary no by appending
-        # parity bits together.
-
-            res = res + val * (10**i)
-
-    # Convert binary to decimal
-        return n - int(str(res), 2)
-
-    @classmethod
-    def encode(self, data: str):
-        m = len(data)
-        r = Hamming.calcRedundantBits(m)
-        arr = Hamming.posRedundantBits(data, r)
-        arr = Hamming.calcParityBits(arr, r)
-        return arr
+def CRC8_check(frame_body) -> bool:
+    data = frame_body[:len(frame_body) - 8]
+    checksum = frame_body[len(frame_body) - 8:]
+    checksum = int(''.join(map(str, checksum)),
+                   2)  #convet [1,0,0,1,1,1,0,1] to decimal number
+    crc_calculator = CrcCalculator(Crc8.CCITT, True)
+    return crc_calculator.verify_checksum(data, checksum)
 
 
 second = 0.001
@@ -202,8 +130,8 @@ def get_ACK_id(mac_frame: np.ndarray) -> int:
 
 if __name__ == '__main__':
     # print(len(preamble))
-    # a = '1010'
-    # print(Hamming.encode(a))
-    # b = '1110010'
-    # print(Hamming.detectError(b))
-    pass
+    data = [1 for _ in range(120)]
+    frame = CRC8_encode(data)
+    print(len(frame))
+    data2 = [1 for _ in range(128)]
+    print(CRC8_check(frame))
