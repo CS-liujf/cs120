@@ -5,7 +5,7 @@ import time
 from typing import Any, Callable, Iterable
 import queue as standard_queue
 import sounddevice as sd
-from utils import gen_PHY_frame, f, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id
+from utils import gen_Mac_frame, gen_PHY_frame, f, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id
 
 
 class LinkError(Exception):
@@ -43,8 +43,7 @@ class MAC(Process):
                 if not self.Network_Link_queue.empty():
                     self.cur_idx += 1
                     payload = self.Network_Link_queue.get()
-                    mac_frame = self.gen_Mac_frame(payload,
-                                                   frame_seq=self.cur_idx)
+                    mac_frame = gen_Mac_frame(payload, frame_seq=self.cur_idx)
                     # If MAC did not recieve an ACK in a given time slot, then it should resend this current frame.
                     # If the times of resending surpass a threshhold, then we can say Link Error
                     for i in range(6):
@@ -68,8 +67,8 @@ class MAC(Process):
                     mac_frame = self.MAC_Rx_queue.get()
                     #check whether it is correct. If not, then we don't reply ACK. other wise put a ACK frame to the MAC_Tx_queue
                     # check
-                    ack_frame = self.gen_Mac_frame([-1 for _ in range(100)],
-                                                   is_ACK=True)
+                    ack_frame = gen_Mac_frame([-1 for _ in range(100)],
+                                              is_ACK=True)
                     self.MAC_Tx_queue.put(ack_frame)
                     # if it is correct, put this to MAC_IP_queue for store
                     pass
@@ -85,21 +84,6 @@ class MAC(Process):
     @classmethod
     def get_seq_num():
         pass
-
-    @classmethod
-    def gen_Mac_frame(self,
-                      payload: list[int],
-                      frame_dest=0,
-                      frame_src=0,
-                      frame_seq: int = 0,
-                      is_ACK=False):
-        if not is_ACK:
-            dest_with_src = [0 for _ in range(8)]
-            frame_type = [0 for _ in range(4)]  #0000 for not ACK
-            seq = [int(x) for x in '{0:08b}'.format(frame_seq)]
-            return dest_with_src + frame_type + seq + payload
-        else:
-            pass
 
     def terminate(self) -> None:
         self.tx.terminate()
@@ -159,9 +143,11 @@ class Rx(Process):
                 if (mac_frame := extract_MAC_frame(phy_frame)) is not None:
                     # chech whther it is an ACK
                     if (ACK_id := get_ACK_id(mac_frame)) > 0:
+                        print(f'ACK:{ACK_id}')
                         self.Rx_MAC_pipe.send(f'ACK_{ACK_id}')
 
                     else:
+                        print('收到了一个frame')
                         self.MAC_Rx_queue.put(mac_frame)
             #这里要时刻监听收到的数据，并判断是否为ACK，若为ACK则调用self.Rx_MAC_pipe.send('Receive ACK')
             #若是正常数据则调用sel.MAC_Rx_queue.put(data)
