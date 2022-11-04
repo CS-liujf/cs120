@@ -29,6 +29,8 @@ t = np.arange(0, 1, 1 / f)
 baseband = np.array([-1, -1, -1, 1, 1, 1])
 bit_len = len(baseband)
 CHUNK = 2048
+PREAMBLE_LEN = 440
+MAC_FRAME_LEN = 120
 
 
 def read_data():
@@ -67,10 +69,11 @@ def gen_Mac_frame(payload: list[int],
 
 
 def gen_PHY_frame(mac_frame: list[int]) -> np.ndarray:
-    frame_wave = np.zeros(len(mac_frame) * bit_len)
-    for j in range(len(mac_frame)):
+    mac_frame_CRC8 = CRC8_encode(mac_frame)  #128bit
+    frame_wave = np.zeros(len(mac_frame_CRC8) * bit_len)
+    for j in range(len(mac_frame_CRC8)):
         frame_wave[j * bit_len:(j + 1) *
-                   bit_len] = 0.5 * (mac_frame[j] * 2 - 1) * baseband
+                   bit_len] = 0.5 * (mac_frame_CRC8[j] * 2 - 1) * baseband
     frame_wave_pre = np.concatenate([preamble, frame_wave])
     inter_space = np.zeros(20)
     return np.concatenate([frame_wave_pre, inter_space]).astype(np.float32)
@@ -79,22 +82,21 @@ def gen_PHY_frame(mac_frame: list[int]) -> np.ndarray:
 def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
     SIMILARITY = 0.4
     REF: float = np.correlate(preamble, preamble)[0]
-    preamble_len = len(preamble)
+    PHY_FRAME_LEN = len(preamble) + (MAC_FRAME_LEN + 8) * bit_len
     data: np.ndarray = np.frombuffer(stream_data, dtype=np.float32)
-    # data_len = len(data)
     # print(len(data))
     # currently data_len=2048 since we set the CHUNK=2048
-    # the origninal phyframe length is 1180
     # preamble length is 440
     cor_arr = np.correlate(data, preamble)
     max_idx = np.argmax(cor_arr)
     # print(f'max_id: {max_idx}')
     # print(max_cor)
     print(f'similarity:{cor_arr[max_idx] / REF}')
-    if (cor_arr[max_idx] / REF > SIMILARITY) and (CHUNK - max_idx) > 1160:
+    if (cor_arr[max_idx] / REF >
+            SIMILARITY) and (CHUNK - max_idx) > PHY_FRAME_LEN:
         # this means that we detec a frame
         # print(f'max_id: {max_idx}')
-        return data[max_idx:max_idx + 1160]
+        return data[max_idx:max_idx + PHY_FRAME_LEN]
     else:
         return None
 
@@ -110,10 +112,11 @@ def extract_MAC_frame(phy_frame: np.ndarray) -> np.ndarray | None:
          0 else 0) for i in range(frame_len)
     ]
     # then we should check whether this frame is correct by CRC or Hamming
-    pass
-    # after that, the CRC or Hamming code must be removed and return
-    pass
-    return np.array(decoded_frame)
+    if CRC8_check(decoded_frame):
+        # after that, the CRC or Hamming code must be removed and return
+        return decoded_frame[:len(decoded_frame) - 8]
+    else:
+        return None
 
 
 def get_ACK_id(mac_frame: np.ndarray) -> int:
