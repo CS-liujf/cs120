@@ -150,6 +150,13 @@ def get_ACK_id(mac_frame: np.ndarray) -> int:
         return ACK_id
 
 
+def get_MAC_payload(mac_frame: np.ndarray) -> list[int]:
+    payload: np.ndarray = mac_frame[MAC_HEAD_LEN:]
+    return payload.tolist()
+
+
 if __name__ == '__main__':
     # print(len(preamble))
-    print('{0:010b}'.format(2))
+    # print('{0:010b}'.format(2))
+    with open('./OUTPUT.txt', 'w') as f:
+        f.writelines(map(lambda x: str(x), [1, 2, 3]))
