@@ -71,13 +71,14 @@ def gen_Mac_frame(payload: list[int] = None,
     if not is_ACK:
         dest_with_src = [0 for _ in range(MAC_DEST_LEN + MAC_SRC_LEN)]
         frame_type = [0 for _ in range(MAC_TYPE_LEN)]  #0000 for not ACK
-        seq = [int(x) for x in '{0:08b}'.format(frame_seq)]
+        seq = [int(x) for x in f'{{0:0{MAC_SEQ_LEN}b}}'.format(frame_seq)]
         return dest_with_src + frame_type + seq + payload
     else:
         dest_with_src = [0 for _ in range(MAC_DEST_LEN + MAC_SRC_LEN)]
         frame_type = [1 for _ in range(MAC_TYPE_LEN)]
         seq = [0 for _ in range(MAC_SEQ_LEN)]
-        ack_payload=mac_frame_received[MAC_HEAD_LEN-MAC_SEQ_LEN:MAC_HEAD_LEN]
+        ack_payload = mac_frame_received[MAC_HEAD_LEN -
+                                         MAC_SEQ_LEN:MAC_HEAD_LEN]
         payload = ack_payload + [
             0 for _ in range(MAC_PAYLOAD_LEN - len(ack_payload))
         ]
@@ -96,7 +97,7 @@ def gen_PHY_frame(mac_frame: list[int]) -> np.ndarray:
 
 
 def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
-    SIMILARITY = 0.4  #about 0.45
+    SIMILARITY = 0.45  #about 0.45
     REF: float = np.correlate(preamble, preamble)[0]
     PHY_FRAME_LEN = len(preamble) + (MAC_FRAME_LEN + 8) * bit_len  # 8 for CRC8
     data: np.ndarray = np.frombuffer(stream_data, dtype=np.float32)
@@ -118,7 +119,7 @@ def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
         return None
 
 
-def extract_MAC_frame(phy_frame: np.ndarray) -> np.ndarray | None:
+def extract_MAC_frame(phy_frame: np.ndarray) -> list[int] | None:
     # this function first decode phy_frame to binary form
     SIGNAL_ONE = np.array([-0.5, -0.5, -0.5, 0.5, 0.5, 0.5])
     frame_without_preamble = phy_frame[len(preamble):]
@@ -128,19 +129,23 @@ def extract_MAC_frame(phy_frame: np.ndarray) -> np.ndarray | None:
          (frame_without_preamble[i * bit_len:(i + 1) * bit_len] @ SIGNAL_ONE) >
          0 else 0) for i in range(frame_len)
     ]
+    assert len(decoded_frame) == (MAC_FRAME_LEN + 8)
     # then we should check whether this frame is correct by CRC or Hamming
+    print('开始校验CRC')
+    print(decoded_frame)
     if CRC8_check(decoded_frame):
+        print('CRC校验成功')
         # after that, the CRC or Hamming code must be removed and return
         return decoded_frame[:len(decoded_frame) - 8]
     else:
         return None
 
 
-def get_ACK_id(mac_frame: np.ndarray) -> int:
+def get_ACK_id(mac_frame: list[int]) -> int:
     #this function will return a positive number only if mac_frame is an ACK frame. Otherwise, it will return -1
     ACK_type = [1, 1, 1, 1]
-    if not (all(mac_frame[MAC_DEST_LEN + MAC_SRC_LEN:MAC_HEAD_LEN -
-                          MAC_SEQ_LEN] == ACK_type)):
+    if not (mac_frame[MAC_DEST_LEN + MAC_SRC_LEN:MAC_HEAD_LEN - MAC_SEQ_LEN]
+            == ACK_type):
         return -1
     else:
         payload = mac_frame[MAC_HEAD_LEN:]
@@ -156,7 +161,11 @@ def get_MAC_payload(mac_frame: np.ndarray) -> list[int]:
 
 
 if __name__ == '__main__':
-    # print(len(preamble))
-    # print('{0:010b}'.format(2))
-    with open('./OUTPUT.txt', 'w') as f:
-        f.writelines(map(lambda x: str(x), [1, 2, 3]))
+    # frame = [1 for _ in range(122)]
+    # res = CRC8_encode(frame)
+    # # res[len(res) - 8:]
+    # temp = [1 for _ in range(121)] + [0] + res[len(res) - 8:]
+    # print(CRC8_check(temp))
+    leng = 10
+    a = f'{{0:0{leng}b}}'.format(2)
+    print(a)
