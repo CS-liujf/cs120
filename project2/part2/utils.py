@@ -26,9 +26,9 @@ second = 0.001
 f = 48000
 fc = 4_000
 t = np.arange(0, 1, 1 / f)
-baseband = np.array([-1, -1, -1, 1, 1, 1])
+baseband = np.array([1, 1, 1, -1, -1, -1])
 bit_len = len(baseband)
-CHUNK = 2048
+CHUNK = 20480
 DUMMY = np.zeros(10).astype(np.float32)
 
 
@@ -38,7 +38,7 @@ def read_data():
         bit_stream = ''.join(['{0:08b}'.format(x) for _, x in enumerate(res)])
 
         temp = [int(bit) for bit in bit_stream]
-        return [temp[i:i + 100] for i in range(0, len(temp), 100)]
+        return [temp[i:i + MAC_PAYLOAD_LEN] for i in range(0, len(temp), 100)]
 
 
 PREAMBLE_LEN = 440
@@ -46,7 +46,7 @@ MAC_DEST_LEN = 4
 MAC_SRC_LEN = 4
 MAC_TYPE_LEN = 4
 MAC_SEQ_LEN = 10
-MAC_PAYLOAD_LEN = 100
+MAC_PAYLOAD_LEN = 500
 MAC_HEAD_LEN = MAC_DEST_LEN + MAC_SRC_LEN + MAC_TYPE_LEN + MAC_SEQ_LEN
 MAC_FRAME_LEN = MAC_HEAD_LEN + MAC_PAYLOAD_LEN
 
@@ -101,7 +101,7 @@ def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
     SIMILARITY = 0.45  #about 0.45
     REF: float = np.correlate(preamble, preamble)[0]
     PHY_FRAME_LEN = len(preamble) + (MAC_FRAME_LEN + 8) * bit_len  # 8 for CRC8
-    # print(f'phy_frame_len{PHY_FRAME_LEN}')
+    # print(f'phy_frame_len: {PHY_FRAME_LEN}')
     data: np.ndarray = np.frombuffer(stream_data, dtype=np.float32)
     # print(f'len(data): {len(data)}')
     # currently data_len=2048 since we set the CHUNK=2048
@@ -111,9 +111,12 @@ def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
     # print(f'max_id: {max_idx}')
     # print(max_cor)
     # print(f'similarity:{cor_arr[max_idx] / REF}')
+    # print(
+    # f'location: {(CHUNK - max_idx)} Compare: {(CHUNK - max_idx) > PHY_FRAME_LEN}'
+    # )
     if (cor_arr[max_idx] / REF >
             SIMILARITY) and (CHUNK - max_idx) > PHY_FRAME_LEN:
-        print(f'similarity:{cor_arr[max_idx] / REF}')
+        # print(f'similarity:{cor_arr[max_idx] / REF}')
         # this means that we detec a frame
         # print(f'max_id: {max_idx}')
         return data[max_idx:max_idx + PHY_FRAME_LEN]
@@ -123,7 +126,7 @@ def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
 
 def extract_MAC_frame(phy_frame: np.ndarray) -> list[int] | None:
     # this function first decode phy_frame to binary form
-    SIGNAL_ONE = np.array([-0.5, -0.5, -0.5, 0.5, 0.5, 0.5])
+    SIGNAL_ONE = baseband / 2
     frame_without_preamble = phy_frame[len(preamble):]
     frame_len = int(len(frame_without_preamble) / bit_len)
     decoded_frame = [
@@ -131,12 +134,13 @@ def extract_MAC_frame(phy_frame: np.ndarray) -> list[int] | None:
          (frame_without_preamble[i * bit_len:(i + 1) * bit_len] @ SIGNAL_ONE) >
          0 else 0) for i in range(frame_len)
     ]
-    print(len(decoded_frame))
+    # print(len(decoded_frame))
     # then we should check whether this frame is correct by CRC or Hamming
     print('开始校验CRC')
-    print(decoded_frame)
+    # print(decoded_frame)
     if CRC8_check(decoded_frame):
         print('CRC校验成功')
+        # print(decoded_frame)
         # after that, the CRC or Hamming code must be removed and return
         return decoded_frame[:len(decoded_frame) - 8]
     else:
@@ -153,7 +157,7 @@ def get_ACK_id(mac_frame: list[int]) -> int:
         payload = mac_frame[MAC_HEAD_LEN:]
         ACK_id = payload[:10]  # like [0,1,1,0,0,1]
         ACK_id = int(''.join(map(str, ACK_id)), 2)
-        print(f'ACK_id:{ACK_id}')
+        # print(f'ACK_id:{ACK_id}')
         return ACK_id
 
 

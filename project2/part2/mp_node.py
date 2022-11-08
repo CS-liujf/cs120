@@ -115,7 +115,8 @@ class Tx(Process):
         while True:
             if not self.MAC_Tx_queue.empty():
                 mac_frame = self.MAC_Tx_queue.get_nowait()
-                print(f'正在发送mac_frame: {mac_frame}')
+                # print(f'正在发送mac_frame: {mac_frame}')
+                print(len(mac_frame))
                 phy_frame = gen_PHY_frame(mac_frame)
                 # print(len(phy_frame))
                 self.stream.write(phy_frame.tobytes())
