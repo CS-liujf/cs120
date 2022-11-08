@@ -29,6 +29,7 @@ t = np.arange(0, 1, 1 / f)
 baseband = np.array([-1, -1, -1, 1, 1, 1])
 bit_len = len(baseband)
 CHUNK = 2048
+DUMMY = np.zeros(10).astype(np.float32)
 
 
 def read_data():
@@ -100,8 +101,9 @@ def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
     SIMILARITY = 0.45  #about 0.45
     REF: float = np.correlate(preamble, preamble)[0]
     PHY_FRAME_LEN = len(preamble) + (MAC_FRAME_LEN + 8) * bit_len  # 8 for CRC8
+    # print(f'phy_frame_len{PHY_FRAME_LEN}')
     data: np.ndarray = np.frombuffer(stream_data, dtype=np.float32)
-    # print(len(data))
+    # print(f'len(data): {len(data)}')
     # currently data_len=2048 since we set the CHUNK=2048
     # preamble length is 440
     cor_arr = np.correlate(data, preamble)
@@ -129,7 +131,7 @@ def extract_MAC_frame(phy_frame: np.ndarray) -> list[int] | None:
          (frame_without_preamble[i * bit_len:(i + 1) * bit_len] @ SIGNAL_ONE) >
          0 else 0) for i in range(frame_len)
     ]
-    assert len(decoded_frame) == (MAC_FRAME_LEN + 8)
+    print(len(decoded_frame))
     # then we should check whether this frame is correct by CRC or Hamming
     print('开始校验CRC')
     print(decoded_frame)
@@ -161,11 +163,15 @@ def get_MAC_payload(mac_frame: np.ndarray) -> list[int]:
 
 
 if __name__ == '__main__':
-    # frame = [1 for _ in range(122)]
-    # res = CRC8_encode(frame)
-    # # res[len(res) - 8:]
-    # temp = [1 for _ in range(121)] + [0] + res[len(res) - 8:]
-    # print(CRC8_check(temp))
-    leng = 10
-    a = f'{{0:0{leng}b}}'.format(2)
-    print(a)
+    # # frame = [1 for _ in range(122)]
+    # # res = CRC8_encode(frame)
+    # # # res[len(res) - 8:]
+    # # temp = [1 for _ in range(121)] + [0] + res[len(res) - 8:]
+    # # print(CRC8_check(temp))
+    # leng = 10
+    # a = f'{{0:0{leng}b}}'.format(2)
+    # print(a)
+    payload = [1 for _ in range(100)]
+    mac_frame = gen_Mac_frame(payload)
+    # print(len(mac_frame))
+    print(CRC8_encode(mac_frame))
