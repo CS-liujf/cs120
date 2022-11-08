@@ -151,7 +151,7 @@ def get_ACK_id(mac_frame: list[int]) -> int:
         return -1
     else:
         payload = mac_frame[MAC_HEAD_LEN:]
-        ACK_id = payload[MAC_HEAD_LEN:MAC_HEAD_LEN + 10]  # like [0,1,1,0,0,1]
+        ACK_id = payload[:10]  # like [0,1,1,0,0,1]
         ACK_id = int(''.join(map(str, ACK_id)), 2)
         print(f'ACK_id:{ACK_id}')
         return ACK_id
