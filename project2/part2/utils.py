@@ -38,7 +38,10 @@ def read_data():
         bit_stream = ''.join(['{0:08b}'.format(x) for _, x in enumerate(res)])
 
         temp = [int(bit) for bit in bit_stream]
-        return [temp[i:i + MAC_PAYLOAD_LEN] for i in range(0, len(temp), 100)]
+        return [
+            temp[i:i + MAC_PAYLOAD_LEN]
+            for i in range(0, len(temp), MAC_PAYLOAD_LEN)
+        ]
 
 
 PREAMBLE_LEN = 440
@@ -46,7 +49,7 @@ MAC_DEST_LEN = 4
 MAC_SRC_LEN = 4
 MAC_TYPE_LEN = 4
 MAC_SEQ_LEN = 10
-MAC_PAYLOAD_LEN = 500
+MAC_PAYLOAD_LEN = 100
 MAC_HEAD_LEN = MAC_DEST_LEN + MAC_SRC_LEN + MAC_TYPE_LEN + MAC_SEQ_LEN
 MAC_FRAME_LEN = MAC_HEAD_LEN + MAC_PAYLOAD_LEN
 
