@@ -107,7 +107,7 @@ class Tx(Process):
                                              rate=f,
                                              output=True,
                                              channels=1,
-                                             frames_per_buffer=1)
+                                             frames_per_buffer=4096)
         print('Tx runs')
         self.barrier.wait()
         # count = 0

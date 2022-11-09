@@ -26,7 +26,9 @@ second = 0.001
 f = 48000
 fc = 4_000
 t = np.arange(0, 1, 1 / f)
-baseband = np.array([1, 1, 1, -1, -1, -1])
+carrier = np.sin(2 * np.pi * 1000 * t)
+# baseband = np.array([1, 1, 1, -1, -1, -1])
+baseband = carrier[:6]
 bit_len = len(baseband)
 CHUNK = 20480
 DUMMY = np.zeros(10).astype(np.float32)
@@ -94,7 +96,7 @@ def gen_PHY_frame(mac_frame: list[int]) -> np.ndarray:
     frame_wave = np.zeros(len(mac_frame_CRC8) * bit_len)
     for j in range(len(mac_frame_CRC8)):
         frame_wave[j * bit_len:(j + 1) *
-                   bit_len] = 0.5 * (mac_frame_CRC8[j] * 2 - 1) * baseband
+                   bit_len] = 1 * (mac_frame_CRC8[j] * 2 - 1) * baseband
     frame_wave_pre = np.concatenate([preamble, frame_wave])
     inter_space = np.zeros(20)
     return np.concatenate([frame_wave_pre, inter_space]).astype(np.float32)
