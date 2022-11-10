@@ -27,8 +27,8 @@ f = 48000
 fc = 4_000
 t = np.arange(0, 1, 1 / f)
 carrier = np.sin(2 * np.pi * 1000 * t)
-# baseband = np.array([1, 1, 1, -1, -1, -1])
-baseband = carrier[:6]
+baseband = np.array([1, 1, 1, -1, -1, -1])
+# baseband = carrier[:6]
 bit_len = len(baseband)
 SIGNAL_ONE = baseband / 2
 CHUNK = 8096
@@ -142,7 +142,9 @@ def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
         # print(f'similarity:{cor_arr[max_idx] / REF}')
         # this means that we detec a frame
         # print(f'max_id: {max_idx}')
-        len_list = data[max_idx:max_idx + PREAMBLE_LEN + 10]
+        len_list = data[max_idx + PREAMBLE_LEN:max_idx + PREAMBLE_LEN +
+                        10 * bit_len]
+        len_list = decode_phy_frame(len_list)
         length = bin_list_to_dec(len_list)
         phy_frame_len = PREAMBLE_LEN + (
             10 + length + 8) * bit_len  # preamble+(len+payload+crc)*bit_len
@@ -155,7 +157,7 @@ def extract_MAC_frame(phy_frame: np.ndarray) -> list[int] | None:
     # this function first decode phy_frame to binary form
     SIGNAL_ONE = baseband / 2
     frame_without_preamble = phy_frame[len(preamble):]
-    decoded_frame = decoded_frame(frame_without_preamble)
+    decoded_frame = decode_phy_frame(frame_without_preamble)
     # print(len(decoded_frame))
     # then we should check whether this frame is correct by CRC or Hamming
     print('开始校验CRC')
