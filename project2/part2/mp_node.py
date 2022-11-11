@@ -1,11 +1,13 @@
 from multiprocessing import Queue, Pipe, Process, Barrier
 from multiprocessing.synchronize import Barrier as Barrier_
 from multiprocessing.connection import PipeConnection
+from threading import Thread
 import time
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Mapping
 import queue as standard_queue
 import sounddevice as sd
 from utils import gen_Mac_frame, gen_PHY_frame, f, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id, DUMMY
+from dataclasses import dataclass
 
 
 class LinkError(Exception):
@@ -20,6 +22,100 @@ def print_start(msg: str = ''):
     print('transmittion starts')
 
 
+@dataclass
+class TWINDOW_ITEM:
+    seq: int = None
+    data: list[int] = None
+    time: float = None
+    ACK_flag: bool = False
+
+
+class TWINDOW(Thread):
+    def __init__(self, capacity: int, max_seq_num: int,
+                 Network_Link_queue: Queue, MAC_Tx_queue: Queue,
+                 Tx_message_queue: Queue, Rx_ACK_queue: Queue):
+        self.capacity = capacity
+        self.size = 0
+        self.seq = 0
+        self.max_seq_num = max_seq_num
+        self.Network_Link_queue = Network_Link_queue
+        self.MAC_Tx_queue = MAC_Tx_queue
+        self.Tx_message_queue = Tx_message_queue
+        self.Rx_ACK_queue = Rx_ACK_queue
+        self.window: list[TWINDOW_ITEM] = [
+            TWINDOW_ITEM() for _ in range(self.capacity)
+        ]
+        super().__init__()
+
+    def run(self):
+        while True:
+            self.check_ACK()
+            self.check_Tx_message()
+            self.check_time()
+            self.put_data()
+
+    def put_data(self):
+        if self.size < self.capacity and (not self.Network_Link_queue.empty()):
+            data = self.Network_Link_queue.get_nowait()
+            seq = self.seq
+            self.window[self.size].data = data
+            self.window[self.size].seq = seq
+            self.size = self.size + 1
+            self.seq = (self.seq + 1) % self.max_seq_num
+            self.MAC_Tx_queue.put((data, seq))
+
+    def check_Tx_message(self):
+        if not self.Tx_message_queue.empty():
+            (seq, t) = self.Tx_message_queue.get_nowait()
+            for idx, item in enumerate(self.window):
+                if item.seq == seq and item.ACK_flag == False:
+                    self.window[idx].time = t
+
+    def check_ACK(self):
+        if not self.Rx_ACK_queue.empty():
+            seq = self.Rx_ACK_queue.get_nowait()
+            for idx, item in enumerate(self.window):
+                if item.seq == seq:
+                    self.window[idx].ACK_flag = True
+                    # check wether this window can move
+                    check_flag = map(lambda x: x.ACK_flag,
+                                     self.window[:idx + 1])
+                    if all(check_flag):
+                        del self.window[:idx + 1]
+                        self.window = self.window + [
+                            TWINDOW_ITEM() for _ in range(idx + 1)
+                        ]
+                        self.size = self.size - (idx + 1)
+                    break
+
+    def check_time(self):
+        for idx, item in enumerate(self.window):
+            if item.time != None:
+                t = time.time()
+                if (t - item.time) > 0.7:
+                    # resend
+                    self.MAC_Tx_queue((item.data, item.seq))
+
+
+class RWINDOW(Thread):
+    def __init__(self,
+                 size: int,
+                 max_seq_num: int,
+                 Network_Link_queue: Queue,
+                 MAC_Tx_queue: Queue,
+                 Rx_ACK_queue: Queue = None):
+        self.size = size
+        self.Network_Link_queue = Network_Link_queue
+        self.MAC_Tx_queue = MAC_Tx_queue
+        self.Rx_ACK_queue = Rx_ACK_queue
+        self.window = [None for _ in range(self.size)]
+        super().__init__()
+
+    def run(self):
+        while True:
+            pass
+
+
 class MAC(Process):
     def __init__(self, Network_Link_queue: Queue,
                  Link_Network_queue: Queue) -> None:
@@ -28,7 +124,9 @@ class MAC(Process):
         self.Network_Link_queue = Network_Link_queue
         self.Link_Network_queue = Link_Network_queue
         self.MAC_Tx_pipe, self.Tx_MAC_pipe = Pipe()
-        self.MAC_Tx_queue = Queue(maxsize=1)
+        self.MAC_Tx_queue = Queue()
+        self.Tx_message_queue = Queue()
+        self.Rx_ACK_queue = Queue()
         self.MAC_Rx_pipe, self.Rx_MAC_pipe = Pipe()
         self.MAC_Rx_queue = Queue()
         self.cur_idx = 0
@@ -37,6 +135,9 @@ class MAC(Process):
         # self.temp = 1
         self.tx = Tx(self.MAC_Tx_queue, self.Tx_MAC_pipe, self.barrier)
         self.rx = Rx(self.MAC_Rx_queue, self.Rx_MAC_pipe, self.barrier)
+        self.tw = TWINDOW(10, 16, self.Network_Link_queue, self.MAC_Tx_queue,
+                          self.Tx_message_queue, self.Rx_ACK_queue)
+        self.tw.start()
         self.tx.start()
         self.rx.start()
         print('MAC runs. Waiting for Tx and Rx...')
