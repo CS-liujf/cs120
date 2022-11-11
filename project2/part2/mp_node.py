@@ -28,6 +28,7 @@ class TWINDOW_ITEM:
     data: list[int] = None
     time: float = None
     ACK_flag: bool = False
+    re_count: int = 0
 
 
 class MAC_Tx_Item(NamedTuple):
@@ -43,7 +44,8 @@ class Tx_Message(NamedTuple):
 class TWINDOW(Thread):
     def __init__(self, capacity: int, max_seq_num: int,
                  Network_Link_queue: Queue, MAC_Tx_queue: 'Queue[MAC_Tx_Item]',
-                 Tx_message_queue: 'Queue[Tx_Message]', Rx_ACK_queue: Queue):
+                 Tx_message_queue: 'Queue[Tx_Message]', Rx_ACK_queue: Queue,
+                 barrier: Barrier_):
         self.capacity = capacity
         self.size = 0
         self.seq = 0
@@ -56,9 +58,11 @@ class TWINDOW(Thread):
         self.window: list[TWINDOW_ITEM] = [
             TWINDOW_ITEM() for _ in range(self.capacity)
         ]
+        self.barrier = barrier
         super().__init__()
 
     def run(self):
+        self.barrier.wait()
         while True:
             self.check_ACK()
             self.check_Tx_message()
@@ -78,9 +82,16 @@ class TWINDOW(Thread):
     def check_Tx_message(self):
         if not self.Tx_message_queue.empty():
             tx_message = self.Tx_message_queue.get_nowait()
+            # print(f'tx_message {tx_message}')
             for idx, item in enumerate(self.window):
                 if item.seq == tx_message.seq and item.ACK_flag == False:
                     self.window[idx].time = tx_message.time
+                    break
+
+        max_re_count = max(map(lambda x: x.re_count, self.window))
+
+        if max_re_count > 10:
+            raise LinkError('MAC')
 
     def check_ACK(self):
         if not self.Rx_ACK_queue.empty():
@@ -91,6 +102,7 @@ class TWINDOW(Thread):
                     # check wether this window can move
                     check_flag = map(lambda x: x.ACK_flag,
                                      self.window[:idx + 1])
+                    print(check_flag)
                     if all(check_flag):
                         del self.window[:idx + 1]
                         self.window = self.window + [
@@ -102,21 +114,21 @@ class TWINDOW(Thread):
     def check_time(self):
         count = 0
         for idx, item in enumerate(self.window):
-            if item.time != None:
+            if (item.time != None) and (item.ACK_flag == False):
                 t = time.time()
-                if (t - item.time) > 0.7:
+                if (t - item.time) > 2:
+                    print(
+                        f'超时重发, item_seq: {item.seq}, item_time: {item.time}, time_now:{t}'
+                    )
                     # resend
+                    # print(f'check_time超时: {idx}')
+                    self.window[idx].re_count += 1
                     self.MAC_Tx_queue.put_nowait(
                         MAC_Tx_Item(item.seq, item.data))
+                    # self.window[idx].time = t
                     count += 1
 
-        if count == self.capacity:
-            self.count += 1
-        else:
-            self.count = 0
-
-        if self.count > 5:
-            raise LinkError('MAC')
+        # print(f'count: {count}')
 
 
 class RWINDOW(Thread):
@@ -142,7 +154,7 @@ class MAC(Process):
     def __init__(self, Network_Link_queue: Queue,
                  Link_Network_queue: Queue) -> None:
         super().__init__()
-        self.barrier = Barrier(3, print_start)
+        self.barrier = Barrier(4, print_start)
         self.Network_Link_queue = Network_Link_queue
         self.Link_Network_queue = Link_Network_queue
         self.MAC_Tx_pipe, self.Tx_MAC_pipe = Pipe()
@@ -158,7 +170,8 @@ class MAC(Process):
         self.tx = Tx(self.MAC_Tx_queue, self.Tx_message_queue, self.barrier)
         self.rx = Rx(self.MAC_Rx_queue, self.Rx_MAC_pipe, self.barrier)
         self.tw = TWINDOW(10, 16, self.Network_Link_queue, self.MAC_Tx_queue,
-                          self.Tx_message_queue, self.Rx_ACK_queue)
+                          self.Tx_message_queue, self.Rx_ACK_queue,
+                          self.barrier)
         self.tw.start()
         self.tx.start()
         self.rx.start()
@@ -197,7 +210,7 @@ class Tx(Process):
                                              rate=f,
                                              output=True,
                                              channels=1,
-                                             frames_per_buffer=4096)
+                                             frames_per_buffer=1)
         print('Tx runs')
         self.barrier.wait()
         # count = 0
@@ -212,9 +225,8 @@ class Tx(Process):
                 # print(len(phy_frame))
                 self.stream.write(phy_frame.tobytes())
                 t = time.time()
-                self.Tx_Message_queue.put_nowait(Tx_Message(
-                    mac_tx_item.seq, t))
-                print(f'发送了一个frame: {mac_tx_item.seq}')
+                self.Tx_Message_queue.put(Tx_Message(mac_tx_item.seq, t))
+                print(f'发送了一个frame: {mac_tx_item.seq}, 时间: {t}')
             else:
                 self.stream.write(DUMMY.tobytes())
             # count += 1
@@ -300,3 +312,9 @@ def main2():
 if __name__ == '__main__':
     main()
     # main2()
+    # q = Queue()
+    # q.put(12)
+    # q.put(13)
+    # print(q.get())
+    # print(q.qsize())
+    # print(q.get())
