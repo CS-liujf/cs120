@@ -204,6 +204,8 @@ class RWINDOW(Thread):
                 else:
                     break
             if offset > -1:
+                for i in range(offset + 1):
+                    self.Link_Network_queue.put_nowait(self.window[i].data)
                 del self.window[:offset + 1]
                 self.window = self.window + [
                     RWINDOW_ITEM() for _ in range(offset + 1)
