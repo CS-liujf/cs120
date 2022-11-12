@@ -188,10 +188,7 @@ class RWINDOW(Thread):
             cur_seq_list = [(self.LFR + i) % self.max_seq_num
                             for i in range(self.capacity)]
             if seq in cur_seq_list:
-                if seq >= self.LFR:
-                    offset = seq - self.LFR
-                else:
-                    offset = seq + self.max_seq_num - self.LFR
+                offset = cur_seq_list.index(seq)
 
                 if self.window[offset].ACK_flag == False:
                     self.window[offset].seq = seq
@@ -208,7 +205,7 @@ class RWINDOW(Thread):
                                 self.window[i].data)
                         del self.window[:offset + 1]
                         self.window = self.window + [
-                            TWINDOW_ITEM() for _ in range(offset + 1)
+                            RWINDOW_ITEM() for _ in range(offset + 1)
                         ]
                         self.size = self.size - (offset + 1)
                         #change LFR
