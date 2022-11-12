@@ -28,12 +28,14 @@ class TWINDOW_ITEM:
     data: list[int] = None
     time: float = None
     ACK_flag: bool = False
+    is_resend: bool = False
     re_count: int = 0
 
 
 class MAC_Tx_Item(NamedTuple):
     seq: int
     data: list[int]
+    is_ACK: bool = False
 
 
 class Tx_Message(NamedTuple):
@@ -75,23 +77,22 @@ class TWINDOW(Thread):
             seq = self.seq
             self.window[self.size].data = data
             self.window[self.size].seq = seq
+            # t = time.time()
+            # self.window[self.size].time = t
             self.size = self.size + 1
             self.seq = (self.seq + 1) % self.max_seq_num
+            print(f'TW发送了frame: {seq}')
             self.MAC_Tx_queue.put_nowait(MAC_Tx_Item(seq, data))
 
     def check_Tx_message(self):
         if not self.Tx_message_queue.empty():
             tx_message = self.Tx_message_queue.get_nowait()
-            # print(f'tx_message {tx_message}')
+            print(f'tx_message {tx_message}')
             for idx, item in enumerate(self.window):
                 if item.seq == tx_message.seq and item.ACK_flag == False:
                     self.window[idx].time = tx_message.time
+                    self.window[idx].is_resend = False
                     break
-
-        max_re_count = max(map(lambda x: x.re_count, self.window))
-
-        if max_re_count > 10:
-            raise LinkError('MAC')
 
     def check_ACK(self):
         if not self.Rx_ACK_queue.empty():
@@ -111,43 +112,78 @@ class TWINDOW(Thread):
                         self.size = self.size - (idx + 1)
                     break
 
+        max_re_count = max(map(lambda x: x.re_count, self.window))
+
+        if max_re_count > 3:
+            raise LinkError('MAC')
+
     def check_time(self):
         count = 0
         for idx, item in enumerate(self.window):
-            if (item.time != None) and (item.ACK_flag == False):
+            if (item.time != None) and (item.ACK_flag
+                                        == False) and item.is_resend == False:
                 t = time.time()
-                if (t - item.time) > 2:
-                    print(
-                        f'超时重发, item_seq: {item.seq}, item_time: {item.time}, time_now:{t}'
-                    )
+                if (t - item.time) > 0.7:
+                    # print(
+                    #     f'超时重发, item_seq: {item.seq}, item_time: {item.time}, time_now:{t}'
+                    # )
                     # resend
                     # print(f'check_time超时: {idx}')
                     self.window[idx].re_count += 1
+                    self.window[idx].is_resend = True
+                    print(f'TW发送了frame: {item.seq}')
                     self.MAC_Tx_queue.put_nowait(
                         MAC_Tx_Item(item.seq, item.data))
                     # self.window[idx].time = t
                     count += 1
 
+
         # print(f'count: {count}')
+@dataclass
+class RWINDOW_ITEM:
+    seq: int = None
+    data: list[int] = None
+    ACK_flag: bool = False
+
+
+class Rx_MAC_Item(NamedTuple):
+    seq: int
+    data: list[int]
 
 
 class RWINDOW(Thread):
     def __init__(self,
-                 size: int,
+                 capacity: int,
                  max_seq_num: int,
-                 Network_Link_queue: Queue,
+                 Link_Network_queue: Queue,
                  MAC_Tx_queue: Queue,
-                 Rx_ACK_queue: Queue = None):
-        self.size = size
-        self.Network_Link_queue = Network_Link_queue
-        self.MAC_Tx_queue = MAC_Tx_queue
-        self.Rx_ACK_queue = Rx_ACK_queue
-        self.window = [None for _ in range(self.size)]
+                 Rx_MAC_queue: Queue = None):
+        self.size = 0
+        self.capacity = capacity
+        self.max_seq_num = max_seq_num
+        self.Link_Network_queue = Link_Network_queue
+        self.MAC_Tx_queue: Queue[MAC_Tx_Item] = MAC_Tx_queue
+        self.Rx_MAC_queue: Queue[Rx_MAC_Item] = Rx_MAC_queue
+        self.window: list[RWINDOW_ITEM] = [
+            RWINDOW_ITEM() for _ in range(self.capacity)
+        ]
         super().__init__()
 
     def run(self):
         while True:
-            pass
+            self.check_data_frame()
+
+    def check_data_frame(self):
+        if not self.Rx_MAC_queue.empty():
+            rx_mac_item = self.Rx_MAC_queue.get_nowait()
+            seq = rx_mac_item.seq
+            self.MAC_Tx_queue.put_nowait(MAC_Tx_Item(seq, None, True))
+            for idx, item in enumerate(self.window):
+                if item.seq == seq:
+                    if item.ACK_flag == False:
+                        pass
+
+            #把data交给上层
 
 
 class MAC(Process):
@@ -169,7 +205,7 @@ class MAC(Process):
         # self.temp = 1
         self.tx = Tx(self.MAC_Tx_queue, self.Tx_message_queue, self.barrier)
         self.rx = Rx(self.MAC_Rx_queue, self.Rx_MAC_pipe, self.barrier)
-        self.tw = TWINDOW(10, 16, self.Network_Link_queue, self.MAC_Tx_queue,
+        self.tw = TWINDOW(10, 32, self.Network_Link_queue, self.MAC_Tx_queue,
                           self.Tx_message_queue, self.Rx_ACK_queue,
                           self.barrier)
         self.tw.start()
@@ -226,7 +262,7 @@ class Tx(Process):
                 self.stream.write(phy_frame.tobytes())
                 t = time.time()
                 self.Tx_Message_queue.put(Tx_Message(mac_tx_item.seq, t))
-                print(f'发送了一个frame: {mac_tx_item.seq}, 时间: {t}')
+                print(f'Tx发送了一个frame: {mac_tx_item.seq}, 时间: {t}')
             else:
                 self.stream.write(DUMMY.tobytes())
             # count += 1
