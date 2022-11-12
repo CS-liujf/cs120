@@ -169,6 +169,7 @@ class RWINDOW(Thread):
         ]
         self.LFR = 0
         self.barrier = barrier
+        self.count = 0
         super().__init__()
 
     def run(self):
@@ -212,6 +213,8 @@ class RWINDOW(Thread):
                         self.size = self.size - (offset + 1)
                         #change LFR
                         self.LFR = (self.LFR + offset) % self.max_seq_num
+                        self.count += (offset + 1)
+                        print(f'成功接收frame的个数: {self.count}')
 
 
 class MAC(Process):
