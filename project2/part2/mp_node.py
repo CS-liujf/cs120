@@ -104,7 +104,6 @@ class TWINDOW(Thread):
                     # check wether this window can move
                     check_flag = map(lambda x: x.ACK_flag,
                                      self.window[:idx + 1])
-                    print(check_flag)
                     if all(check_flag):
                         del self.window[:idx + 1]
                         self.window = self.window + [
