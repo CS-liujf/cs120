@@ -101,18 +101,23 @@ class TWINDOW(Thread):
             for idx, item in enumerate(self.window):
                 if item.seq == seq:
                     self.window[idx].ACK_flag = True
-                    # check wether this window can move
-                    check_flag = map(lambda x: x.ACK_flag,
-                                     self.window[:idx + 1])
-                    if all(check_flag):
-                        del self.window[:idx + 1]
-                        self.window = self.window + [
-                            TWINDOW_ITEM() for _ in range(idx + 1)
-                        ]
-                        self.size = self.size - (idx + 1)
-                        self.count += (idx + 1)
-                        print(f'已成功发送frame个数: {self.count}')
                     break
+
+            # check wether this window can move
+            offset = -1
+            for _, item in enumerate(self.window):
+                if item.ACK_flag == True:
+                    offset += 1
+                else:
+                    break
+            if offset > -1:
+                del self.window[:offset + 1]
+                self.window = self.window + [
+                    TWINDOW_ITEM() for _ in range(offset + 1)
+                ]
+                self.size = self.size - (offset + 1)
+                self.count += (offset + 1)
+                print(f'已成功发送frame个数: {self.count}')
 
         max_re_count = max(map(lambda x: x.re_count, self.window))
 
