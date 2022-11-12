@@ -122,6 +122,10 @@ def bin_list_to_dec(bin_list: list[int]) -> int:
 
 def input_process(input_queue: Queue, Rx_ACK_queue: Queue,
                   Rx_MAC_queue: Queue):
+    class Rx_MAC_Item(NamedTuple):
+        seq: int
+        data: list[int]
+
     SIMILARITY = 0.45  #about 0.45
     REF: float = np.correlate(preamble, preamble)[0]
     while True:
@@ -167,7 +171,7 @@ def input_process(input_queue: Queue, Rx_ACK_queue: Queue,
                 else:
                     payload = get_MAC_payload(mac_frame)
                     seq = get_MAC_seq(mac_frame)
-                    Rx_MAC_queue.put_nowait((seq, payload))
+                    Rx_MAC_queue.put_nowait(Rx_MAC_Item(seq, payload))
 
 
 def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
