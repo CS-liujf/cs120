@@ -1,4 +1,3 @@
-from enum import EnumMeta
 from multiprocessing import Queue, Pipe, Process, Barrier
 from multiprocessing.synchronize import Barrier as Barrier_
 from multiprocessing.connection import PipeConnection
@@ -9,6 +8,7 @@ import queue as standard_queue
 import sounddevice as sd
 from utils import gen_Mac_frame, gen_PHY_frame, f, get_MAC_payload, get_MAC_seq, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id, DUMMY
 from dataclasses import dataclass
+import numpy as np
 
 
 class LinkError(Exception):
@@ -317,31 +317,46 @@ class Rx(Process):
         self.Rx_ACK_queue = Rx_ACK_queue
         self.barrier = barrier
 
+    def input_process(self, input_queue: standard_queue.Queue,Rx_ACK_queue:Queue,Rx_MAC_queue:Queue):
+        while True:
+            if not input_queue.empty():
+                stream_data = input_queue.get_nowait()
+                data: np.ndarray = np.frombuffer(stream_data, dtype=np.float32)
+                print(len(data))
+
     def run(self) -> None:
         import pyaudio
+        input_queue = standard_queue.Queue()
+
+        def input_callback(in_data, frame_cont, time_info, status_flags):
+            input_queue.put_nowait(in_data)
+            return (None, pyaudio.paContinue)
+
         self.stream = pyaudio.PyAudio().open(format=pyaudio.paFloat32,
                                              rate=f,
                                              input=True,
                                              channels=1,
-                                             frames_per_buffer=1)
+                                             frames_per_buffer=8192,
+                                             stream_callback=input_callback)
         print('Rx runs')
         self.barrier.wait()
-        while True:
-            # print('test')
-            stream_data = self.stream.read(CHUNK)
-            # print('读取了一个frame')
-            if (phy_frame := extract_PHY_frame(stream_data)) is not None:
-                # check CRC8 in extract_MAC_frame
-                print('提取到phy_frame')
-                if (mac_frame := extract_MAC_frame(phy_frame)) is not None:
-                    # chech whther it is an ACK
-                    if (ACK_id := get_ACK_id(mac_frame)) >= 0:
-                        self.Rx_ACK_queue.put_nowait(ACK_id)
+        self.input_process(input_queue)
+        # while True:
+        #     # print('test')
+        #     stream_data = self.stream.read(CHUNK)
+        #     # print('读取了一个frame')
+        #     if (phy_frame := extract_PHY_frame(stream_data)) is not None:
+        #         # check CRC8 in extract_MAC_frame
+        #         print('提取到phy_frame')
+        #         if (mac_frame := extract_MAC_frame(phy_frame)) is not None:
+        #             # chech whther it is an ACK
+        #             if (ACK_id := get_ACK_id(mac_frame)) >= 0:
+        #                 self.Rx_ACK_queue.put_nowait(ACK_id)
 
-                    else:
-                        payload = get_MAC_payload(mac_frame)
-                        seq = get_MAC_seq(mac_frame)
-                        self.Rx_MAC_queue.put_nowait(Rx_MAC_Item(seq, payload))
+        #             else:
+        #                 payload = get_MAC_payload(mac_frame)
+        #                 seq = get_MAC_seq(mac_frame)
+        #                 self.Rx_MAC_queue.put_nowait(Rx_MAC_Item(seq, payload))
 
 
 def main():

@@ -3,6 +3,7 @@ import numpy as np
 from scipy import integrate
 import random
 from crc import CrcCalculator, Crc8
+from queue import Queue
 
 
 def CRC8_encode(data: list[int]):
@@ -119,6 +120,56 @@ def bin_list_to_dec(bin_list: list[int]) -> int:
     return int(''.join(map(str, bin_list)), 2)
 
 
+def input_process(input_queue: Queue, Rx_ACK_queue: Queue,
+                  Rx_MAC_queue: Queue):
+    SIMILARITY = 0.45  #about 0.45
+    REF: float = np.correlate(preamble, preamble)[0]
+    while True:
+        if not input_queue.empty():
+            stream_data = input_queue.get_nowait()
+            data: np.ndarray = np.frombuffer(stream_data, dtype=np.float32)
+            cor_arr = np.correlate(data, preamble)
+            max_idx = np.argmax(cor_arr)
+            if (cor_arr[max_idx] / REF < SIMILARITY):
+                continue
+            elif (CHUNK - max_idx) > (PREAMBLE_LEN + 10 * bit_len):
+                len_list = data[max_idx + PREAMBLE_LEN:max_idx + PREAMBLE_LEN +
+                                10 * bit_len]
+                len_list = decode_phy_frame(len_list)
+                length = bin_list_to_dec(len_list)
+                phy_frame_len = PREAMBLE_LEN + (
+                    10 + length +
+                    8) * bit_len  # preamble+(len+payload+crc)*bit_len
+                if (CHUNK - max_idx) <= phy_frame_len:
+                    stream_data2 = input_queue.get()
+                    data2: np.ndarray = np.frombuffer(stream_data2,
+                                                      dtype=np.float32)
+                    data = np.concatenate((data, data2))
+            else:
+                stream_data2 = input_queue.get()
+                data2: np.ndarray = np.frombuffer(stream_data2,
+                                                  dtype=np.float32)
+                data = np.concatenate((data, data2))
+                len_list = data[max_idx + PREAMBLE_LEN:max_idx + PREAMBLE_LEN +
+                                10 * bit_len]
+                len_list = decode_phy_frame(len_list)
+                length = bin_list_to_dec(len_list)
+                phy_frame_len = PREAMBLE_LEN + (
+                    10 + length +
+                    8) * bit_len  # preamble+(len+payload+crc)*bit_len
+            phy_frame = data[max_idx:max_idx + phy_frame_len]
+            print('提取到phy_frame')
+            if (mac_frame := extract_MAC_frame(phy_frame)) is not None:
+                # chech whther it is an ACK
+                if (ACK_id := get_ACK_id(mac_frame)) >= 0:
+                    Rx_ACK_queue.put_nowait(ACK_id)
+
+                else:
+                    payload = get_MAC_payload(mac_frame)
+                    seq = get_MAC_seq(mac_frame)
+                    Rx_MAC_queue.put_nowait((seq, payload))
+
+
 def extract_PHY_frame(stream_data: bytes) -> np.ndarray | None:
     SIMILARITY = 0.45  #about 0.45
     REF: float = np.correlate(preamble, preamble)[0]
@@ -187,9 +238,11 @@ def get_ACK_id(mac_frame: list[int]) -> int:
 def get_MAC_payload(mac_frame: list[int]) -> list[int]:
     return mac_frame[MAC_HEAD_LEN:]
 
-def get_MAC_seq(mac_frame:list[int])->int:
-    seq_list= mac_frame[MAC_HEAD_LEN-MAC_SEQ_LEN:MAC_HEAD_LEN]
+
+def get_MAC_seq(mac_frame: list[int]) -> int:
+    seq_list = mac_frame[MAC_HEAD_LEN - MAC_SEQ_LEN:MAC_HEAD_LEN]
     return bin_list_to_dec(seq_list)
+
 
 if __name__ == '__main__':
     # # frame = [1 for _ in range(122)]
@@ -205,12 +258,5 @@ if __name__ == '__main__':
     # class A(NamedTuple):
     #     age: int
     #     name: str
-    class A(NamedTuple):
-        seq: int
-        data: list[int]
-        is_ACK:bool
-    # A = NamedTuple('A', [('age', int), ('name', str),('lll',bool)])
-
-    a = A(10, 'fds',True)
-    # a[0] = 3
-    print(a.index)
+    a = np.array([1, 2, 3, 4, 5])
+    print(type(np.where(a > 3)[0]))
