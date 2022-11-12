@@ -6,7 +6,7 @@ import time
 from typing import NamedTuple
 import queue as standard_queue
 import sounddevice as sd
-from utils import gen_Mac_frame, gen_PHY_frame, f, get_MAC_payload, get_MAC_seq, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id, DUMMY
+from utils import gen_Mac_frame, gen_PHY_frame, f, get_MAC_payload, get_MAC_seq, input_process, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id, DUMMY
 from dataclasses import dataclass
 import numpy as np
 
@@ -340,7 +340,7 @@ class Rx(Process):
                                              stream_callback=input_callback)
         print('Rx runs')
         self.barrier.wait()
-        self.input_process(input_queue)
+        input_process(input_queue, self.Rx_ACK_queue, self.Rx_MAC_queue)
         # while True:
         #     # print('test')
         #     stream_data = self.stream.read(CHUNK)
