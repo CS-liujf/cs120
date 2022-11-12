@@ -111,11 +111,13 @@ class TWINDOW(Thread):
                             TWINDOW_ITEM() for _ in range(idx + 1)
                         ]
                         self.size = self.size - (idx + 1)
+                        self.count += (idx + 1)
+                        print(f'已成功发送frame个数: {self.count}')
                     break
 
         max_re_count = max(map(lambda x: x.re_count, self.window))
 
-        if max_re_count > 3:
+        if max_re_count > 20:
             raise LinkError('MAC')
 
     def check_time(self):

@@ -31,7 +31,7 @@ baseband = np.array([1, 1, 1, -1, -1, -1])
 # baseband = carrier[:6]
 bit_len = len(baseband)
 SIGNAL_ONE = baseband / 2
-CHUNK = 8096
+CHUNK = 20480
 DUMMY = np.zeros(10).astype(np.float32)
 
 
