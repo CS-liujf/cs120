@@ -1,3 +1,4 @@
+from enum import EnumMeta
 from multiprocessing import Queue, Pipe, Process, Barrier
 from multiprocessing.synchronize import Barrier as Barrier_
 from multiprocessing.connection import PipeConnection
@@ -152,24 +153,24 @@ class Rx_MAC_Item(NamedTuple):
 
 
 class RWINDOW(Thread):
-    def __init__(self,
-                 capacity: int,
-                 max_seq_num: int,
-                 Link_Network_queue: Queue,
-                 MAC_Tx_queue: Queue,
-                 Rx_MAC_queue: Queue = None):
+    def __init__(self, capacity: int, max_seq_num: int,
+                 Link_Network_queue: Queue, MAC_Tx_queue: Queue,
+                 Rx_MAC_queue: Queue, barrier: Barrier_):
         self.size = 0
         self.capacity = capacity
         self.max_seq_num = max_seq_num
-        self.Link_Network_queue = Link_Network_queue
+        self.Link_Network_queue: Queue[list[int]] = Link_Network_queue
         self.MAC_Tx_queue: Queue[MAC_Tx_Item] = MAC_Tx_queue
         self.Rx_MAC_queue: Queue[Rx_MAC_Item] = Rx_MAC_queue
         self.window: list[RWINDOW_ITEM] = [
             RWINDOW_ITEM() for _ in range(self.capacity)
         ]
+        self.LFR = 0
+        self.barrier = barrier
         super().__init__()
 
     def run(self):
+        self.barrier.wait()
         while True:
             self.check_data_frame()
 
@@ -177,20 +178,45 @@ class RWINDOW(Thread):
         if not self.Rx_MAC_queue.empty():
             rx_mac_item = self.Rx_MAC_queue.get_nowait()
             seq = rx_mac_item.seq
-            self.MAC_Tx_queue.put_nowait(MAC_Tx_Item(seq, None, True))
-            for idx, item in enumerate(self.window):
-                if item.seq == seq:
-                    if item.ACK_flag == False:
-                        pass
+            data = rx_mac_item.data
+            self.MAC_Tx_queue.put_nowait(MAC_Tx_Item(seq, None,
+                                                     True))  #发送ACK frame
 
-            #把data交给上层
+            cur_seq_list = [(self.LFR + i) % self.max_seq_num
+                            for i in range(self.capacity)]
+            if seq in cur_seq_list:
+                if seq >= self.LFR:
+                    offset = seq - self.LFR
+                else:
+                    offset = seq + self.max_seq_num - self.LFR
+
+                if self.window[offset].ACK_flag == False:
+                    self.window[offset].seq = seq
+                    self.window[offset].data = data
+                    self.window[offset].ACK_flag = True
+
+                    # pass data to the network layer
+                    # and check wether this window can move
+                    check_flag = map(lambda x: x.ACK_flag,
+                                     self.window[:offset + 1])
+                    if all(check_flag):
+                        for i in range(offset + 1):
+                            self.Link_Network_queue.put_nowait(
+                                self.window[i].data)
+                        del self.window[:offset + 1]
+                        self.window = self.window + [
+                            TWINDOW_ITEM() for _ in range(offset + 1)
+                        ]
+                        self.size = self.size - (offset + 1)
+                        #change LFR
+                        self.LFR = (self.LFR + offset) % self.max_seq_num
 
 
 class MAC(Process):
     def __init__(self, Network_Link_queue: Queue,
                  Link_Network_queue: Queue) -> None:
         super().__init__()
-        self.barrier = Barrier(4, print_start)
+        self.barrier = Barrier(5, print_start)
         self.Network_Link_queue = Network_Link_queue
         self.Link_Network_queue = Link_Network_queue
         self.MAC_Tx_pipe, self.Tx_MAC_pipe = Pipe()
@@ -199,6 +225,7 @@ class MAC(Process):
         self.Rx_ACK_queue = Queue()
         self.MAC_Rx_pipe, self.Rx_MAC_pipe = Pipe()
         self.MAC_Rx_queue = Queue()
+        self.Rx_MAC_queue = Queue()
         self.cur_idx = 0
 
     def run(self):
@@ -208,7 +235,10 @@ class MAC(Process):
         self.tw = TWINDOW(10, 32, self.Network_Link_queue, self.MAC_Tx_queue,
                           self.Tx_message_queue, self.Rx_ACK_queue,
                           self.barrier)
+        self.rw = RWINDOW(10, 32, self.Link_Network_queue, self.MAC_Tx_queue,
+                          self.Rx_MAC_queue, self.barrier)
         self.tw.start()
+        self.rw.start()
         self.tx.start()
         self.rx.start()
         print('MAC runs. Waiting for Tx and Rx...')
