@@ -195,23 +195,24 @@ class RWINDOW(Thread):
                     self.window[offset].data = data
                     self.window[offset].ACK_flag = True
 
-                    # pass data to the network layer
-                    # and check wether this window can move
-                    check_flag = map(lambda x: x.ACK_flag,
-                                     self.window[:offset + 1])
-                    if all(check_flag):
-                        for i in range(offset + 1):
-                            self.Link_Network_queue.put_nowait(
-                                self.window[i].data)
-                        del self.window[:offset + 1]
-                        self.window = self.window + [
-                            RWINDOW_ITEM() for _ in range(offset + 1)
-                        ]
-                        self.size = self.size - (offset + 1)
-                        #change LFR
-                        self.LFR = (self.LFR + offset) % self.max_seq_num
-                        self.count += (offset + 1)
-                        print(f'成功接收frame的个数: {self.count}')
+            # pass data to the network layer
+            # and check wether this window can move
+            offset = -1
+            for _, item in enumerate(self.window):
+                if item.ACK_flag == True:
+                    offset += 1
+                else:
+                    break
+            if offset > -1:
+                del self.window[:offset + 1]
+                self.window = self.window + [
+                    RWINDOW_ITEM() for _ in range(offset + 1)
+                ]
+                self.size = self.size - (offset + 1)
+                #change LFR
+                self.LFR = (self.LFR + offset + 1) % self.max_seq_num
+                self.count += (offset + 1)
+                print(f'成功接收frame的个数: {self.count}')
 
 
 class MAC(Process):
