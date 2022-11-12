@@ -293,7 +293,8 @@ class Tx(Process):
                 # print(len(phy_frame))
                 self.stream.write(phy_frame.tobytes())
                 t = time.time()
-                self.Tx_Message_queue.put(Tx_Message(mac_tx_item.seq, t))
+                if not mac_tx_item.is_ACK:
+                    self.Tx_Message_queue.put(Tx_Message(mac_tx_item.seq, t))
                 print(f'Tx发送了一个frame: {mac_tx_item.seq}, 时间: {t}')
             else:
                 self.stream.write(DUMMY.tobytes())
