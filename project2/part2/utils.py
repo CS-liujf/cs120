@@ -52,7 +52,7 @@ MAC_DEST_LEN = 4
 MAC_SRC_LEN = 4
 MAC_TYPE_LEN = 4
 MAC_SEQ_LEN = 10
-MAC_PAYLOAD_LEN = 100
+MAC_PAYLOAD_LEN = 1000
 MAC_HEAD_LEN = MAC_DEST_LEN + MAC_SRC_LEN + MAC_TYPE_LEN + MAC_SEQ_LEN
 MAC_FRAME_LEN = MAC_HEAD_LEN + MAC_PAYLOAD_LEN
 
@@ -185,10 +185,12 @@ def get_ACK_id(mac_frame: list[int]) -> int:
         return ACK_id
 
 
-def get_MAC_payload(mac_frame: np.ndarray) -> list[int]:
-    payload: np.ndarray = mac_frame[MAC_HEAD_LEN:]
-    return payload.tolist()
+def get_MAC_payload(mac_frame: list[int]) -> list[int]:
+    return mac_frame[MAC_HEAD_LEN:]
 
+def get_MAC_seq(mac_frame:list[int])->int:
+    seq_list= mac_frame[MAC_HEAD_LEN-MAC_SEQ_LEN:MAC_HEAD_LEN]
+    return bin_list_to_dec(seq_list)
 
 if __name__ == '__main__':
     # # frame = [1 for _ in range(122)]
@@ -199,5 +201,17 @@ if __name__ == '__main__':
     # leng = 10
     # a = f'{{0:0{leng}b}}'.format(2)
     # print(a)
-    mac_len = [int(x) for x in '{0:010b}'.format(2)]
-    print(mac_len)
+    from typing import NamedTuple
+
+    # class A(NamedTuple):
+    #     age: int
+    #     name: str
+    class A(NamedTuple):
+        seq: int
+        data: list[int]
+        is_ACK:bool
+    # A = NamedTuple('A', [('age', int), ('name', str),('lll',bool)])
+
+    a = A(10, 'fds',True)
+    # a[0] = 3
+    print(a.index)

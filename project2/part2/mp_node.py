@@ -7,7 +7,7 @@ import time
 from typing import NamedTuple
 import queue as standard_queue
 import sounddevice as sd
-from utils import gen_Mac_frame, gen_PHY_frame, f, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id, DUMMY
+from utils import gen_Mac_frame, gen_PHY_frame, f, get_MAC_payload, get_MAC_seq, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id, DUMMY
 from dataclasses import dataclass
 
 
@@ -223,15 +223,13 @@ class MAC(Process):
         self.MAC_Tx_queue: Queue[MAC_Tx_Item] = Queue()
         self.Tx_message_queue: Queue[Tx_Message] = Queue()
         self.Rx_ACK_queue = Queue()
-        self.MAC_Rx_pipe, self.Rx_MAC_pipe = Pipe()
-        self.MAC_Rx_queue = Queue()
         self.Rx_MAC_queue = Queue()
         self.cur_idx = 0
 
     def run(self):
         # self.temp = 1
         self.tx = Tx(self.MAC_Tx_queue, self.Tx_message_queue, self.barrier)
-        self.rx = Rx(self.MAC_Rx_queue, self.Rx_MAC_pipe, self.barrier)
+        self.rx = Rx(self.Rx_MAC_queue, self.Rx_ACK_queue, self.barrier)
         self.tw = TWINDOW(10, 32, self.Network_Link_queue, self.MAC_Tx_queue,
                           self.Tx_message_queue, self.Rx_ACK_queue,
                           self.barrier)
@@ -245,6 +243,7 @@ class MAC(Process):
         self.barrier.wait()
         try:
             self.tw.join()
+            self.rw.join()
         except LinkError as e:
             print(e)
 
@@ -300,11 +299,11 @@ class Tx(Process):
 
 
 class Rx(Process):
-    def __init__(self, MAC_Rx_queue: Queue, Rx_MAC_pipe: PipeConnection,
+    def __init__(self, Rx_MAC_queue: Queue, Rx_ACK_queue: Queue,
                  barrier: Barrier_) -> None:
         super().__init__()
-        self.MAC_Rx_queue = MAC_Rx_queue
-        self.Rx_MAC_pipe = Rx_MAC_pipe
+        self.Rx_MAC_queue: Queue[Rx_MAC_Item] = Rx_MAC_queue
+        self.Rx_ACK_queue = Rx_ACK_queue
         self.barrier = barrier
 
     def run(self) -> None:
@@ -325,11 +324,13 @@ class Rx(Process):
                 print('提取到phy_frame')
                 if (mac_frame := extract_MAC_frame(phy_frame)) is not None:
                     # chech whther it is an ACK
-                    if (ACK_id := get_ACK_id(mac_frame)) > 0:
-                        self.Rx_MAC_pipe.send(f'ACK_{ACK_id}')
+                    if (ACK_id := get_ACK_id(mac_frame)) >= 0:
+                        self.Rx_ACK_queue.put_nowait(ACK_id)
 
                     else:
-                        self.MAC_Rx_queue.put(mac_frame)
+                        payload = get_MAC_payload(mac_frame)
+                        seq = get_MAC_seq(mac_frame)
+                        self.Rx_MAC_queue.put_nowait(Rx_MAC_Item(seq, payload))
 
 
 def main():
