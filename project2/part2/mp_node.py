@@ -368,9 +368,10 @@ def main2():
     recv_list = []
     try:
         while True:
-            recv_list = recv_list + Link_Network_queue.get(timeout=12)
+            temp = Link_Network_queue.get(timeout=20)
+            recv_list = recv_list + temp
 
-    except standard_queue.Empty:
+    except:
         print('transmittion finished! Start storing')
         # mac.terminate()
         with open('./OUTPUT.txt', 'w') as f:
