@@ -88,9 +88,8 @@ def gen_Mac_frame(payload: list[int] = None,
         dest_with_src = [0 for _ in range(MAC_DEST_LEN + MAC_SRC_LEN)]
         frame_type = [1 for _ in range(MAC_TYPE_LEN)]
         seq = [0 for _ in range(MAC_SEQ_LEN)]
-        ack_payload = mac_frame_received[
-            MAC_HEAD_LEN - MAC_SEQ_LEN:
-            MAC_HEAD_LEN]  #get seq numbe Like [0,0,0,0,0,0,0,0,0,1]
+        ack_payload = dec_to_bin_list(
+            frame_seq, 10)  #get seq numbe Like [0,0,0,0,0,0,0,0,0,1]
         return dest_with_src + frame_type + seq + ack_payload
 
 

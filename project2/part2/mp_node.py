@@ -285,7 +285,8 @@ class Tx(Process):
                 mac_tx_item = self.MAC_Tx_queue.get_nowait()
                 # print(f'正在发送mac_frame: {mac_frame}')
                 mac_frame = gen_Mac_frame(mac_tx_item.data,
-                                          frame_seq=mac_tx_item.seq)
+                                          frame_seq=mac_tx_item.seq,
+                                          is_ACK=mac_tx_item.is_ACK)
                 phy_frame = gen_PHY_frame(mac_frame)
                 # print(len(phy_frame))
                 self.stream.write(phy_frame.tobytes())
