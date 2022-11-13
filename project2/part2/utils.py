@@ -54,7 +54,7 @@ def read_data():
         ]
 
 
-PREAMBLE_LEN = 440
+PREAMBLE_LEN = 100
 MAC_DEST_LEN = 4
 MAC_SRC_LEN = 4
 MAC_TYPE_LEN = 4
@@ -73,7 +73,7 @@ def gen_preamble():
     return np.sin(omega)
 
 
-preamble = gen_preamble()
+preamble = gen_preamble()[:PREAMBLE_LEN]
 
 
 def dec_to_bin_list(number: int, length: int) -> list[int]:
