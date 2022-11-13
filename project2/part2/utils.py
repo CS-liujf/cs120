@@ -4,6 +4,12 @@ from scipy import integrate
 import random
 from crc import CrcCalculator, Crc8
 from queue import Queue
+from typing import NamedTuple
+
+
+class Rx_MAC_Item(NamedTuple):
+    seq: int
+    data: list[int]
 
 
 def CRC8_encode(data: list[int]):
@@ -122,10 +128,6 @@ def bin_list_to_dec(bin_list: list[int]) -> int:
 
 def input_process(input_queue: Queue, Rx_ACK_queue: Queue,
                   Rx_MAC_queue: Queue):
-    class Rx_MAC_Item(NamedTuple):
-        seq: int
-        data: list[int]
-
     SIMILARITY = 0.45  #about 0.45
     REF: float = np.correlate(preamble, preamble)[0]
     while True:
