@@ -44,7 +44,7 @@ class Tx_Message(NamedTuple):
     time: float
 
 
-class TWINDOW(Thread):
+class TWINDOW(Process):
     def __init__(self, capacity: int, max_seq_num: int,
                  Network_Link_queue: Queue, MAC_Tx_queue: 'Queue[MAC_Tx_Item]',
                  Tx_message_queue: 'Queue[Tx_Message]', Rx_ACK_queue: Queue,
@@ -158,7 +158,7 @@ class Rx_MAC_Item(NamedTuple):
     data: list[int]
 
 
-class RWINDOW(Thread):
+class RWINDOW(Process):
     def __init__(self, capacity: int, max_seq_num: int,
                  Link_Network_queue: Queue, MAC_Tx_queue: Queue,
                  Rx_MAC_queue: Queue, barrier: Barrier_):
