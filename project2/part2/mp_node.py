@@ -130,7 +130,7 @@ class TWINDOW(Thread):
             if (item.time != None) and (item.ACK_flag
                                         == False) and item.is_resend == False:
                 t = time.time()
-                if (t - item.time) > 0.7:
+                if (t - item.time) > 1.5:
                     # print(
                     #     f'超时重发, item_seq: {item.seq}, item_time: {item.time}, time_now:{t}'
                     # )
@@ -239,10 +239,10 @@ class MAC(Process):
         # self.temp = 1
         self.tx = Tx(self.MAC_Tx_queue, self.Tx_message_queue, self.barrier)
         self.rx = Rx(self.Rx_MAC_queue, self.Rx_ACK_queue, self.barrier)
-        self.tw = TWINDOW(10, 32, self.Network_Link_queue, self.MAC_Tx_queue,
+        self.tw = TWINDOW(20, 50, self.Network_Link_queue, self.MAC_Tx_queue,
                           self.Tx_message_queue, self.Rx_ACK_queue,
                           self.barrier)
-        self.rw = RWINDOW(10, 32, self.Link_Network_queue, self.MAC_Tx_queue,
+        self.rw = RWINDOW(20, 50, self.Link_Network_queue, self.MAC_Tx_queue,
                           self.Rx_MAC_queue, self.barrier)
         self.tw.start()
         self.rw.start()
@@ -336,7 +336,7 @@ class Rx(Process):
                                              rate=f,
                                              input=True,
                                              channels=1,
-                                             frames_per_buffer=8192,
+                                             frames_per_buffer=20480,
                                              stream_callback=input_callback)
         print('Rx runs')
         self.barrier.wait()
@@ -361,7 +361,7 @@ class Rx(Process):
 
 def main():
     Network_Link_queue = Queue(maxsize=10)
-    Link_Network_queue = Queue(maxsize=10)
+    Link_Network_queue = Queue(maxsize=30)
     # Link_Network_queue=
     data_list = read_data()
     mac = MAC(Network_Link_queue, Link_Network_queue)
@@ -382,7 +382,7 @@ def main():
 
 def main2():
     Network_Link_queue = Queue(maxsize=10)
-    Link_Network_queue = Queue(maxsize=10)
+    Link_Network_queue = Queue(maxsize=30)
     # Link_Network_queue=
     # data_list = read_data()
     mac = MAC(Network_Link_queue, Link_Network_queue)
