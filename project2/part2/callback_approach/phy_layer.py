@@ -1,6 +1,7 @@
-import sys
 import time
 from threading import Thread
+from numpy import ndarray
+import sounddevice as sd
 
 from general import *
 from globals import *
@@ -19,6 +20,7 @@ class MAC(Thread):
     def run(self):
         global received_frames
         global all_buffer
+        global Rx_frame
         # init and run Tx and Rx
         tx = Tx()
         tx.start()
@@ -30,6 +32,7 @@ class MAC(Thread):
             for i in range(TOTAL_FRAME_NUMBER):
                 # put packed data into Tx frame and switch to Tx thread
                 self.phy_send(i)
+                time.sleep(0.001)
                 # record sending time
                 data_send_time[i] = time.time()
                 print(f'Packed data {i}-th sent.')
@@ -37,15 +40,14 @@ class MAC(Thread):
                 if not (i + 1) % CHECK_ACK_RECEIVED_RANGE_SIZE:
                     self.check_ack_with_range(
                         i + 1 - CHECK_ACK_RECEIVED_RANGE_SIZE, i + 1)
+            self.check_ack_with_range(0, TOTAL_FRAME_NUMBER)
             # sending finished
-            print(
-                f'Transmission finished, total time used: {time.time()-start_time}'
-            )
+            print(f'Transmission finished, total time used: {time.time() - start_time}')
         elif self.node_type == NodeType.RECEIVER:
             # point to where in coming data is processing
             curr_pointer = 0
             while received_frames < TOTAL_FRAME_NUMBER:
-                while curr_pointer + DETECT_PREAMBLE_LENGTH > len(all_buffer):
+                while curr_pointer + PREAMBLE_TRY_LENGTH > len(all_buffer):
                     # if current available buffer length doesn't reach detect try length, wait...
                     pass
                 # find where preamble starts
@@ -53,14 +55,14 @@ class MAC(Thread):
                 preamble_start_index = detect_preamble(try_preamble_buffer)
                 if preamble_start_index is None:
                     # no preamble, go and check next
-                    curr_pointer += PREAMBLE_TRY_LENGTH-len(PREAMBLE)
+                    curr_pointer += PREAMBLE_TRY_LENGTH-len(PREAMBLE)-10
                     continue
                 curr_pointer += preamble_start_index
                 # wait till a whole frame received
                 while curr_pointer+FRAME_DATA_LENGTH > len(all_buffer):
                     pass
                 # switch to Rx and decode the frame
-                Rx_frame[:] = all_buffer[curr_pointer:curr_pointer+FRAME_DATA_LENGTH]
+                Rx_frame = all_buffer[curr_pointer: curr_pointer + FRAME_DATA_LENGTH]
                 self.package_detected()
                 curr_pointer += FRAME_DATA_LENGTH
             print(f'Receive finished, total time used: {time.time()-start_time}')
@@ -111,32 +113,40 @@ class MAC(Thread):
 
     def check_ack_with_range(self, start, end):
         global retransmit_count
-        curr_pointer = 0
+        global ack_received_status
+        global curr_pointer
+        print(f'curr_pointer: {curr_pointer}, start:{start}, end:{end}')
         for i in range(start, end):
             while not ack_received_status[i]:
-                # receive ack
                 while len(all_buffer) - curr_pointer < PREAMBLE_TRY_LENGTH + ACK_LENGTH:
-                    pass
-                try_preamble_buffer = all_buffer[curr_pointer:curr_pointer + PREAMBLE_TRY_LENGTH]
-                preamble_start_index = detect_preamble(try_preamble_buffer)
-                if preamble_start_index is None:
-                    # no preamble, go and check next
-                    curr_pointer += PREAMBLE_TRY_LENGTH - len(PREAMBLE)
-                else:
-                    curr_pointer += preamble_start_index
-                    ack = self.decode_ack(all_buffer[curr_pointer:curr_pointer + ACK_LENGTH])
-                    if not ack_received_status[ack]:
-                        print(f'ack {ack} received')
-                        ack_received_status[ack] = True
-                if time.time() - data_send_time[i] > retransmit_time:
-                    retransmit_count[i] += 1
-                    if retransmit_count[i] > max_retransmit:
-                        print('link error')
-                        sys.exit(-1)
+                    time.sleep(0.1)
+                # receive ack
+                while len(all_buffer) - curr_pointer > PREAMBLE_TRY_LENGTH + ACK_LENGTH:
+                    try_preamble_buffer = all_buffer[curr_pointer:curr_pointer + PREAMBLE_TRY_LENGTH]
+                    preamble_start_index = detect_preamble(try_preamble_buffer)
+                    if preamble_start_index is None:
+                        # no preamble, go and check next
+                        curr_pointer += PREAMBLE_TRY_LENGTH - len(PREAMBLE) - 10
                     else:
-                        print(f'Resend data {i}')
-                        self.phy_send(i)
-                        data_send_time[i] = time.time()
+                        curr_pointer += preamble_start_index
+                        ack = self.decode_ack(all_buffer[curr_pointer:curr_pointer + ACK_LENGTH])
+                        print(f'receive ack: {ack}')
+                        if not 0 <= ack < end:
+                            continue
+                        if not ack_received_status[ack]:
+                            ack_received_status[ack] = True
+                if not ack_received_status[i]:
+                    if time.time() - data_send_time[i] > retransmit_time:
+                        retransmit_count[i] += 1
+                        if retransmit_count[i] > max_retransmit:
+                            print('link error')
+                            while True:
+                                pass
+                        else:
+                            print(f'Resend data {i}')
+                            # print(self.origin_data[i])
+                            self.phy_send(i)
+                            data_send_time[i] = time.time()
 
 
 class Tx(Thread):
@@ -152,7 +162,6 @@ class Tx(Thread):
         node_status = NodeStatus.SENDING_DATA
         while True:
             while len(Tx_frame) > output_index:
-                print('dff', output_index)
                 # data is still sending
                 node_status = NodeStatus.SENDING_DATA
             node_status = NodeStatus.IDLE
@@ -184,7 +193,7 @@ class Rx(Thread):
         Rx_condition.acquire()
         Rx_condition.wait()
         while True:
-            if not Rx_frame or len(Rx_frame) != FRAME_DATA_LENGTH:
+            if len(Rx_frame) != FRAME_DATA_LENGTH:
                 raise Exception('Rx_frame length not enough')
             decoded_bits = self.decode_to_bits(Rx_frame)
             if not CRC8_check(decoded_bits):
@@ -193,8 +202,9 @@ class Rx(Thread):
                 frame_index = int(decoded_bits[:8], 2)
                 if frame_index < 0 or frame_index > TOTAL_FRAME_NUMBER:
                     raise Exception('wrong frame index')
+                send_ACK(frame_index)
                 node_status = NodeStatus.SENDING_ACK
-                print(f'Frame {frame_index} received.')
+                print(f'Frame {frame_index} received, send ack {frame_index}')
                 if not frame_received_status[frame_index]:
                     frame_received_status[frame_index] = True
                     received_data[frame_index] = decoded_bits[8:len(decoded_bits)-8]
@@ -204,9 +214,9 @@ class Rx(Thread):
 
     @staticmethod
     def decode_to_bits(raw_data):
-        bits = np.zeros(BITS_PER_FRAME+1)
-        for i in range(BITS_PER_FRAME+1):
-            bits[i] = np.sum(raw_data[i*BIT_SIGNAL_LENGTH:(i+1)*BIT_SIGNAL_LENGTH]*SIGNAL_ONE)
+        bits = np.zeros(MAC_FRAME_BIT_LENGTH)
+        for i in range(MAC_FRAME_BIT_LENGTH):
+            bits[i] = np.sum(np.asarray(raw_data[i*BIT_SIGNAL_LENGTH:(i+1)*BIT_SIGNAL_LENGTH])*SIGNAL_ONE)
         return ''.join([str(int(x)) for x in bits > 0])
 
     @staticmethod
@@ -225,13 +235,13 @@ class Rx(Thread):
 def generate_packed_data() -> list[np.ndarray]:
     with open(input_file_name, 'rb') as f:
         raw_data = f.read()
-    bit_data = ''.join(['{0:08b}'.format(x) for x in raw_data])
+    bit_data = raw_data.decode('utf-8')
     packed_datas: list = []
     for i in range(TOTAL_FRAME_NUMBER):
         data = [PREAMBLE]
         frame_index: str = '{0:08b}'.format(i)
         payload: str = bit_data[BITS_PER_FRAME * i:BITS_PER_FRAME * (i + 1)]
-        for bit in CRC8_encode([int(x) for x in frame_index + payload]):
+        for bit in CRC8_encode(frame_index + payload):
             data.append(SIGNAL_ONE if bit == '1' else SIGNAL_ZERO)
         packed_datas.append(np.concatenate(data, dtype=np.float32))
     return packed_datas
@@ -246,9 +256,9 @@ def detect_preamble(data: np.ndarray):
 
 def init_stream():
     """init sounddevice stream"""
-    # sd.default.extra_settings = sd.AsioSettings(channel_selectors=[0]), sd.AsioSettings(channel_selectors=[1])
-    sd.default.device[0] = 2
-    sd.default.device[1] = 3
+    sd.default.extra_settings = sd.AsioSettings(channel_selectors=[0]), sd.AsioSettings(channel_selectors=[1])
+    sd.default.device[0] = 8
+    sd.default.device[1] = 8
     return sd.Stream(samplerate=F,
                      blocksize=BLOCK_SIZE,
                      channels=CHANNELS,
@@ -268,31 +278,31 @@ def callback(indata: ndarray, outdata: ndarray, frames: int, time, status) -> No
     if node_status == NodeStatus.IDLE:
         outdata.fill(0)
     elif node_status == NodeStatus.SENDING_DATA:
-        print(f'output index: {output_index}')
         # write data into outdata
-        if len(Tx_frame) - output_index > frames:
-            outdata[:] = np.asarray(Tx_frame[output_index:output_index + frames]).reshape(frames, 1)
-        else:
-            outdata[:] = np.append(
-                Tx_frame[output_index:],
-                np.zeros(frames - (len(Tx_frame) - output_index))).reshape(frames, 1)
-        output_index += frames
+        try:
+            if len(Tx_frame) - output_index > frames:
+                outdata[:] = np.asarray(Tx_frame[output_index:output_index + frames]).reshape(frames, 1)
+            else:
+                outdata[:] = np.append(
+                    np.asarray(Tx_frame[output_index:]),
+                    np.zeros(frames - (len(Tx_frame) - output_index))).reshape(frames, 1)
+            output_index += frames
+        except Exception:
+            print(f'err: len Tx frame:{len(Tx_frame)}')
     elif node_status == NodeStatus.SENDING_ACK:
         # generate next ack and put into outdata
-        next_ack = generate_next_packed_ACK()
-        outdata[:] = np.append(next_ack, np.zeros(frames - len(next_ack))).reshape(frames, 1)
+        outdata[:] = np.append(ack_buffer[:], np.zeros(frames - len(ack_buffer))).reshape(frames, 1)
         node_status = NodeStatus.IDLE
+        ack_buffer = []
 
 
-def generate_next_packed_ACK():
-    """get next ACK"""
+def send_ACK(n):
     global PREAMBLE
-    global sending_ack_index
+    global ack_buffer
     # add preamble
     ack = [PREAMBLE]
     # add ACK index
-    for bit in '{0:08b}'.format(sending_ack_index):
+    # TODO: add crc to ack
+    for bit in '{0:08b}'.format(n):
         ack.append(SIGNAL_ONE if int(bit) else SIGNAL_ZERO)
-    # increase sending ack's index
-    sending_ack_index += 1
-    return ack
+    ack_buffer = np.concatenate([ack_buffer, np.concatenate(ack)])

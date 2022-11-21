@@ -9,7 +9,7 @@ F = 48000
 BLOCK_SIZE = 2048
 CHANNELS = 1
 DEFAULT_DEVICE = 3
-LATENCY = 'low'
+LATENCY = 0.001
 
 
 class NodeType(str, Enum):
@@ -37,25 +37,28 @@ BITS_PER_FRAME = 200
 TOTAL_FRAME_NUMBER = TOTAL_BITS // BITS_PER_FRAME
 
 PREAMBLE = generate_preamble()
-PREAMBLE_THRESHOLD = 210
+PREAMBLE_THRESHOLD = 20
 PREAMBLE_TRY_LENGTH = 150
 # each time try to detect preamble with following length
 DETECT_PREAMBLE_LENGTH = int(1.5 * len(PREAMBLE))
-SIGNAL_ONE = [-0.9, -0.9, -0.9, 0.9, 0.9, 0.9]
-SIGNAL_ZERO = [0.9, 0.9, 0.9, -0.9, -0.9, -0.9]
+SIGNAL_ONE = [-0.5, -0.5, -0.5, 0.5, 0.5, 0.5]
+SIGNAL_ZERO = [0.5, 0.5, 0.5, -0.5, -0.5, -0.5]
 BIT_SIGNAL_LENGTH = len(SIGNAL_ZERO)
-# length of bits contained(remove preamble), the 1 is for frame_index, 8 is for crc
-FRAME_DATA_LENGTH = BIT_SIGNAL_LENGTH*(BITS_PER_FRAME+1+8)
+# length of bits contained(remove preamble), the 8 is for frame_index, 8 is for crc
+MAC_FRAME_BIT_LENGTH = BITS_PER_FRAME+8+8
+FRAME_DATA_LENGTH = BIT_SIGNAL_LENGTH*MAC_FRAME_BIT_LENGTH
 # ack length
 ACK_LENGTH = 8 * BIT_SIGNAL_LENGTH
 # each time check how many acks
-CHECK_ACK_RECEIVED_RANGE_SIZE = 10
+CHECK_ACK_RECEIVED_RANGE_SIZE = 100
 
-input_file_name = '../../INPUT.txt'
-Tx_frame = []
-Rx_frame = []
+input_file_name = 'project2/INPUT.txt'
+Tx_frame = np.zeros(1)
+Rx_frame = np.zeros(1)
 # the index of an output frame
 output_index = 0
+# the incoming data processing index
+curr_pointer = 0
 # the buffer used to store all in coming data
 all_buffer = []
 ack_buffer = []
@@ -67,9 +70,9 @@ received_data = [None] * TOTAL_FRAME_NUMBER
 frame_received_status = [False] * TOTAL_FRAME_NUMBER
 # receive ack status
 ack_received_status = [False] * TOTAL_FRAME_NUMBER
-retransmit_time = 0.5
+retransmit_time = 0.3
 retransmit_count = [0] * TOTAL_FRAME_NUMBER
-max_retransmit = 7
+max_retransmit = 20
 sending_ack_index = 0
 received_frames = 0
 node_status = 'idle'
