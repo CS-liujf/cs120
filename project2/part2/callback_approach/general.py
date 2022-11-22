@@ -20,11 +20,3 @@ def CRC8_check(frame_body) -> bool:
     if not res:
         print(f"crc: {int(frame_body[len(frame_body)-8:],2)} data: {''.join([str(x) for x in data])}")
     return res
-
-
-def write_received_date_to_bin():
-    # TODO: store into bin, not .txt
-    with open('output.txt', 'w') as f:
-        for data in received_data:
-            if data:
-                f.write(''.join([str(x) for x in data]))
