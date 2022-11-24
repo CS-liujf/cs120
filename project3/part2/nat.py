@@ -1,4 +1,4 @@
-from mac_layer import MAC
+from mac import MAC
 from multiprocessing import Queue, Pipe, Process, Barrier
 from network_utils import get_IP_payload
 from threading import Thread

@@ -1,4 +1,4 @@
-from mac_layer import MAC
+from mac import MAC
 from multiprocessing import Queue, Pipe, Process, Barrier
 from network_utils import gen_IP_datagram
 
