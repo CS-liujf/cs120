@@ -36,7 +36,7 @@ carrier = np.sin(2 * np.pi * 1000 * t)
 baseband = carrier[:6]
 bit_len = len(baseband)
 SIGNAL_ONE = baseband / 2
-CHUNK = 20480
+CHUNK = 4096
 DUMMY = np.zeros(10).astype(np.float32)
 
 
