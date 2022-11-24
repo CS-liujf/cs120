@@ -22,14 +22,15 @@ def read_data():
     with open('INPUT.txt', 'r') as f:
         data = f.readlines()
 
-    res = ''
+    PAYLOAD_LEN = 320
+    data = [i.rstrip() for i in data]  # remove \n
+    bit_stream = ''
     for line in data:
-        res += ''.join([
-            '{0:08b}'.format(ord(x))
-            for _, x in enumerate(line[:len(line) - 1])
-        ])
+        bit_stream += ''.join(
+            ['{0:08b}'.format(ord(x)) for _, x in enumerate(line)])
 
-    print(len(res))
+    temp = [int(bit) for bit in bit_stream]
+    return [temp[i:i + PAYLOAD_LEN] for i in range(0, len(temp), PAYLOAD_LEN)]
     # print(len(res))
 
 
