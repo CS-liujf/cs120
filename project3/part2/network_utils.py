@@ -2,6 +2,8 @@
 https://blog.csdn.net/weixin_42000303/article/details/122182539
 '''
 
+IP_HEADER_LEN = 32 + 32
+
 
 def ip2int(ip: str) -> int:
     return sum(int(v) * 256**(3 - i) for i, v in enumerate(ip.split(".")))
@@ -32,5 +34,15 @@ def gen_IP_datagram(payload: list[int]):
     return s_addr_list + d_addr_list + payload
 
 
+def get_IP_payload(ip_datagram: list[int]):
+    payload = ip_datagram[IP_HEADER_LEN:]
+    payload = [payload[i:i + 8] for i in range(0, len(payload), 8)]
+    res = ''.join(map(lambda x: chr(bin_list_to_dec(x)), payload))
+    print(res)
+
+
 if __name__ == '__main__':
-    gen_IP_datagram([])
+    temp = [0 for _ in range(320 + 64)]
+    temp = [0 for _ in range(64)] + 40 * dec_to_bin_list(74, 8)
+    get_IP_payload(temp)
+    # print(chr(48))
