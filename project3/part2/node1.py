@@ -1,5 +1,6 @@
 from mac_layer import MAC
 from multiprocessing import Queue, Pipe, Process, Barrier
+from network_utils import gen_IP_datagram
 
 
 def gen_data():
@@ -35,8 +36,10 @@ def read_data():
 
 
 class NETWORK(Process):
-    def __init__(self, Transport_Network_queue: Queue) -> None:
+    def __init__(self, Transport_Network_queue: Queue,
+                 Network_Transport_queue: Queue) -> None:
         self.Transport_Network_queue = Transport_Network_queue
+        self.Network_Transport_queue = Network_Transport_queue
         super().__init__()
 
     def run(self):
@@ -45,21 +48,23 @@ class NETWORK(Process):
         mac = MAC(Network_Link_queue, Link_Network_queue)
         mac.start()
         while True:
-            pass
+            payload: list[int] = self.Transport_Network_queue.get()
+            ip_datagram = gen_IP_datagram(payload)
+            Network_Link_queue.put(ip_datagram)
 
 
 def main():
-    temp = [i + 58 for i in range(7)]
-    res = []
-    for i in range(48, 85):
-        if i in temp:
-            continue
-        res.append(40 * chr(i) + '\n')
-    # print(len(res))
-    with open('INPUT.txt', 'w') as f:
-        f.writelines(res)
+    Transport_Network_queue = Queue()
+    Network_Transport_queue = Queue()
+    net = NETWORK(Transport_Network_queue, Network_Transport_queue)
+    net.start()
+    data_list = read_data()
+    for data in data_list:
+        Transport_Network_queue.put(data)
+    # while True:
+    # pass
 
 
 if __name__ == '__main__':
-    # main()
-    read_data()
+    main()
+    # read_data()
