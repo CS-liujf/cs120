@@ -2,6 +2,20 @@
 https://blog.csdn.net/weixin_42000303/article/details/122182539
 '''
 import struct
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class SOCKET():
+    ip: str
+    port: int
+
+
+@dataclass(frozen=True)
+class TRANSPORT_ITEM():
+    data: list[int]
+    socket: SOCKET
+
 
 S_IP_LEN = 32
 D_IP_LEN = 32
@@ -52,9 +66,9 @@ def binstr2list(bin_string: str) -> list[int]:
     return list(map(int, bin_string))
 
 
-def gen_IP_datagram(payload: list[int]):
+def gen_IP_datagram(payload: list[int], _socket: SOCKET):
     s_ip_int = ip2int('192.168.1.2')
-    d_ip_int = ip2int('10.20.196.226')
+    d_ip_int = ip2int(_socket.ip)
     s_addr_list = dec_to_bin_list(s_ip_int, 32)
     d_addr_list = dec_to_bin_list(d_ip_int, 32)
     tot_len = len(payload)
