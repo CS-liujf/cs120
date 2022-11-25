@@ -1,7 +1,8 @@
 from mac import MAC
 from multiprocessing import Queue, Pipe, Process, Barrier
-from network_utils import get_IP_payload
+from network_utils import *
 from threading import Thread
+import socket
 
 
 class T_MODULE(Thread):
@@ -12,7 +13,11 @@ class T_MODULE(Thread):
         super().__init__()
 
     def run(self):
-        pass
+        while True:
+            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            data, s_addr = udp_socket.recvfrom(100)
+            self.Network_Link_queue.put(gen_IP_datagram(bytes_to_01_list(data), SOCKET(*s_addr)))
+            udp_socket.close()
 
 
 class R_MODULE(Thread):
@@ -24,7 +29,10 @@ class R_MODULE(Thread):
         while True:
             # get an ip datagram
             ip_datagram: list[int] = self.Link_Network_queue.get()
-            get_IP_payload(ip_datagram)
+            addr = get_IP_dest(ip_datagram), get_IP_port(ip_datagram)
+            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            udp_socket.sendto(get_IP_data(ip_datagram), addr)
+            udp_socket.close()
 
 
 class NETWORK(Process):

@@ -17,6 +17,10 @@ class TRANSPORT_ITEM():
 
 
 IP_HEADER_LEN = 32 + 32
+IP_SRC_LEN = 32
+IP_DEST_LEN = 32
+IP_PORT_LEN = 16
+IP_DATA_LEN = 320
 
 
 def ip2int(ip: str) -> int:
@@ -48,15 +52,29 @@ def gen_IP_datagram(payload: list[int], _socket: SOCKET):
     return s_addr_list + d_addr_list + payload
 
 
-def get_IP_payload(ip_datagram: list[int]):
-    payload = ip_datagram[IP_HEADER_LEN:]
-    payload = [payload[i:i + 8] for i in range(0, len(payload), 8)]
-    res = ''.join(map(lambda x: chr(bin_list_to_dec(x)), payload))
-    print(res)
+def bytes_to_01_list(data: bytes) -> list[int]:
+    res = []
+    for byte in data:
+        res += [*bin(byte)][2:]
+    return res
+
+
+def get_IP_dest(ip_datagram: list[int]) -> str:
+    return int2ip(bin_list_to_dec(ip_datagram[IP_SRC_LEN:IP_SRC_LEN + IP_DEST_LEN]))
+
+
+def get_IP_port(ip_datagram: list[int]) -> int:
+    return bin_list_to_dec(ip_datagram[IP_HEADER_LEN:IP_HEADER_LEN + IP_PORT_LEN])
+
+
+def get_IP_data(ip_datagram: list[int]) -> str:
+    payload_bits = ip_datagram[IP_HEADER_LEN+IP_PORT_LEN:]
+    payload = [payload_bits[i:i + 8] for i in range(0, IP_DATA_LEN, 8)]
+    return ''.join(map(lambda x: chr(bin_list_to_dec(x)), payload))
 
 
 if __name__ == '__main__':
     temp = [0 for _ in range(320 + 64)]
     temp = [0 for _ in range(64)] + 40 * dec_to_bin_list(74, 8)
-    get_IP_payload(temp)
+    get_IP_data(temp)
     # print(chr(48))
