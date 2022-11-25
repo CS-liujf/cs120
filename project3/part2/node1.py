@@ -1,5 +1,6 @@
 from network import NETWORK
 from multiprocessing import Queue
+from network_utils import SOCKET, TRANSPORT_ITEM, dec_to_bin_list
 
 
 def gen_data():
@@ -30,14 +31,21 @@ def read_data():
     # print(len(res))
 
 
+def gen_UDP_datagram(payload: list[int], _socket: SOCKET):
+    port_list = dec_to_bin_list(_socket.port, 16)
+    return port_list + payload
+
+
 def main():
-    Transport_Network_queue = Queue()
+    r_addr = SOCKET('127.0.0.1', 0)
+    Transport_Network_queue: Queue[TRANSPORT_ITEM] = Queue()
     Network_Transport_queue = Queue()
     net = NETWORK(Transport_Network_queue, Network_Transport_queue)
     net.start()
     data_list = read_data()
     for data in data_list:
-        Transport_Network_queue.put(data)
+        data = gen_UDP_datagram(data, r_addr)
+        Transport_Network_queue.put(TRANSPORT_ITEM(data, r_addr))
 
     net.join()
     # while True:

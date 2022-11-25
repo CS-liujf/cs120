@@ -1,6 +1,20 @@
 '''
 https://blog.csdn.net/weixin_42000303/article/details/122182539
 '''
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class SOCKET():
+    ip: str
+    port: int
+
+
+@dataclass(frozen=True)
+class TRANSPORT_ITEM():
+    data: list[int]
+    socket: SOCKET
+
 
 IP_HEADER_LEN = 32 + 32
 
@@ -25,9 +39,9 @@ def bin_list_to_dec(bin_list: list[int]) -> int:
     return int(''.join(map(str, bin_list)), 2)
 
 
-def gen_IP_datagram(payload: list[int]):
+def gen_IP_datagram(payload: list[int], _socket: SOCKET):
     s_ip_int = ip2int('192.168.1.2')
-    d_ip_int = ip2int('10.20.196.226')
+    d_ip_int = ip2int(_socket.ip)
     s_addr_list = dec_to_bin_list(s_ip_int, 32)
     d_addr_list = dec_to_bin_list(d_ip_int, 32)
     tot_len = len(payload)

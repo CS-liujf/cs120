@@ -1,20 +1,21 @@
 from mac import MAC
 from multiprocessing import Queue, Process
 from threading import Thread
-from network_utils import gen_IP_datagram, get_IP_payload
+from network_utils import gen_IP_datagram, get_IP_payload, TRANSPORT_ITEM
 
 
 class T_MODULE(Thread):
     def __init__(self, Transport_Network_queue: Queue,
                  Network_Link_queue: Queue) -> None:
-        self.Transport_Network_queue = Transport_Network_queue
+        self.Transport_Network_queue: Queue[
+            TRANSPORT_ITEM] = Transport_Network_queue
         self.Network_Link_queue = Network_Link_queue
         super().__init__()
 
     def run(self):
         while True:
-            payload: list[int] = self.Transport_Network_queue.get()
-            ip_datagram = gen_IP_datagram(payload)
+            t_item = self.Transport_Network_queue.get()
+            ip_datagram = gen_IP_datagram(t_item.data, t_item.socket)
             self.Network_Link_queue.put(ip_datagram)
 
 
