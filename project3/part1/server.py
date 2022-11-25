@@ -7,7 +7,7 @@ def main():
     udp_socket.bind(addr)
     count = 0
     while True:
-        data, s_addr = udp_socket.recvfrom(20)
+        data, s_addr = udp_socket.recvfrom(100)
         count += 1
         print({'payload': data.decode('utf-8'), 's_addr': s_addr})
         if count == 10:
