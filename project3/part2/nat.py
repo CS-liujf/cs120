@@ -1,28 +1,30 @@
-from mac import MAC
-from multiprocessing import Queue, Pipe, Process, Barrier
-from network_utils import *
-from threading import Thread
 import socket
+from multiprocessing import Queue, Process
+from threading import Thread
+
+from mac import MAC
+from network_utils import gen_IP_port, bytes_to_01_list, gen_IP_datagram, SOCKET, get_IP_dest, get_IP_port, get_IP_data
 
 
 class T_MODULE(Thread):
     def __init__(self, Transport_Network_queue: Queue,
-                 Network_Link_queue: Queue) -> None:
+                 Network_Link_queue: Queue, udp_socket) -> None:
         self.Transport_Network_queue = Transport_Network_queue
         self.Network_Link_queue = Network_Link_queue
+        self.udp_socket = udp_socket
         super().__init__()
 
     def run(self):
         while True:
-            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            data, s_addr = udp_socket.recvfrom(100)
-            self.Network_Link_queue.put(gen_IP_datagram(bytes_to_01_list(data), SOCKET(*s_addr)))
-            udp_socket.close()
+            data, s_addr = self.udp_socket.recvfrom(100)
+            payload = gen_IP_port(s_addr[1]) + bytes_to_01_list(data)
+            self.Network_Link_queue.put(gen_IP_datagram(payload, SOCKET(*s_addr)))
 
 
 class R_MODULE(Thread):
-    def __init__(self, Link_Network_queue: Queue) -> None:
+    def __init__(self, Link_Network_queue: Queue, udp_socket) -> None:
         self.Link_Network_queue = Link_Network_queue
+        self.udp_socket = udp_socket
         super().__init__()
 
     def run(self):
@@ -30,9 +32,7 @@ class R_MODULE(Thread):
             # get an ip datagram
             ip_datagram: list[int] = self.Link_Network_queue.get()
             addr = get_IP_dest(ip_datagram), get_IP_port(ip_datagram)
-            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            udp_socket.sendto(get_IP_data(ip_datagram), addr)
-            udp_socket.close()
+            self.udp_socket.sendto(get_IP_data(ip_datagram), addr)
 
 
 class NETWORK(Process):
@@ -46,12 +46,14 @@ class NETWORK(Process):
         Network_Link_queue = Queue()
         Link_Network_queue = Queue()
         mac = MAC(Network_Link_queue, Link_Network_queue)
-        t_module = T_MODULE(self.Transport_Network_queue, Network_Link_queue)
+        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        t_module = T_MODULE(self.Transport_Network_queue, Network_Link_queue, udp_socket)
         t_module.start()
-        r_module = R_MODULE(Link_Network_queue)
+        r_module = R_MODULE(Link_Network_queue, udp_socket)
         r_module.start()
         mac.start()
         mac.join()
+        udp_socket.close()
 
 
 def main():

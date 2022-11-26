@@ -67,6 +67,10 @@ def get_IP_port(ip_datagram: list[int]) -> int:
     return bin_list_to_dec(ip_datagram[IP_HEADER_LEN:IP_HEADER_LEN + IP_PORT_LEN])
 
 
+def gen_IP_port(port: int) -> list[int]:
+    return list(map(int, [*f'{port:0{IP_PORT_LEN}b}']))
+
+
 def get_IP_data(ip_datagram: list[int]) -> str:
     payload_bits = ip_datagram[IP_HEADER_LEN+IP_PORT_LEN:]
     payload = [payload_bits[i:i + 8] for i in range(0, IP_DATA_LEN, 8)]
