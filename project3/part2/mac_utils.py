@@ -162,7 +162,7 @@ def input_process(input_queue: Queue, Rx_ACK_queue: Queue,
                     10 + length +
                     8) * bit_len  # preamble+(len+payload+crc)*bit_len
             phy_frame = data[max_idx:max_idx + phy_frame_len]
-            print('提取到phy_frame')
+            # print('提取到phy_frame')
             if (mac_frame := extract_MAC_frame(phy_frame)) is not None:
                 # chech whther it is an ACK
                 if (ACK_id := get_ACK_id(mac_frame)) >= 0:
@@ -171,6 +171,7 @@ def input_process(input_queue: Queue, Rx_ACK_queue: Queue,
                 else:
                     payload = get_MAC_payload(mac_frame)
                     seq = get_MAC_seq(mac_frame)
+                    print('收到一个data')
                     Rx_MAC_queue.put_nowait(Rx_MAC_Item(seq, payload))
 
 
