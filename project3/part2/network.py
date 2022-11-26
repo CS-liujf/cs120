@@ -1,7 +1,7 @@
 from mac import MAC
 from multiprocessing import Queue, Process
 from threading import Thread
-from network_utils import gen_IP_datagram, get_IP_payload, TRANSPORT_ITEM
+from network_utils import gen_IP_datagram, get_IP_data, TRANSPORT_ITEM
 
 
 class T_MODULE(Thread):
@@ -28,7 +28,7 @@ class R_MODULE(Thread):
         while True:
             # get an ip datagram
             ip_datagram: list[int] = self.Link_Network_queue.get()
-            get_IP_payload(ip_datagram)
+            print(get_IP_data(ip_datagram))
 
 
 class NETWORK(Process):
