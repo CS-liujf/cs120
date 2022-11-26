@@ -1,7 +1,10 @@
-from mac import MAC
-from multiprocessing import Queue, Pipe, Process, Barrier
-from network_utils import get_IP_payload
+import os
+import socket
+from multiprocessing import Queue, Process
 from threading import Thread
+
+from mac import MAC
+from network_utils import get_IP_dest, send_routine, recv_routine, get_ICMP_payload, gen_IP_datagram
 
 
 class T_MODULE(Thread):
@@ -12,7 +15,10 @@ class T_MODULE(Thread):
         super().__init__()
 
     def run(self):
-        pass
+        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+        while True:
+            self.Network_Link_queue.put(gen_IP_datagram(*recv_routine(sock)))
+        sock.close()
 
 
 class R_MODULE(Thread):
@@ -21,10 +27,13 @@ class R_MODULE(Thread):
         super().__init__()
 
     def run(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+        ident = os.getpid()
+        magic = b'1234567890'
         while True:
-            # get an ip datagram
             ip_datagram: list[int] = self.Link_Network_queue.get()
-            get_IP_payload(ip_datagram)
+            send_routine(sock, get_IP_dest(ip_datagram), ident, magic, get_ICMP_payload(ip_datagram))
+        sock.close()
 
 
 class NETWORK(Process):
