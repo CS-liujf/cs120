@@ -9,32 +9,32 @@ from network_utils import get_IP_dest, send_routine, recv_routine, get_ICMP_payl
 
 class T_MODULE(Thread):
     def __init__(self, Transport_Network_queue: Queue,
-                 Network_Link_queue: Queue) -> None:
+                 Network_Link_queue: Queue, sock: socket.socket) -> None:
         self.Transport_Network_queue = Transport_Network_queue
         self.Network_Link_queue = Network_Link_queue
+        self.sock = sock
         super().__init__()
 
     def run(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
         while True:
-            src, sending_ts = recv_routine(sock)
-            self.Network_Link_queue.put(gen_IP_datagram(float2list(sending_ts), SOCKET(src, 0)))
-        sock.close()
+            src, sending_ts = recv_routine(self.sock)
+            self.Network_Link_queue.put(
+                gen_IP_datagram(float2list(sending_ts), SOCKET(src, 0)))
 
 
 class R_MODULE(Thread):
-    def __init__(self, Link_Network_queue: Queue) -> None:
+    def __init__(self, Link_Network_queue: Queue, sock: socket.socket) -> None:
         self.Link_Network_queue = Link_Network_queue
+        self.sock = sock
         super().__init__()
 
     def run(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
         ident = os.getpid()
         magic = b'1234567890'
         while True:
             ip_datagram: list[int] = self.Link_Network_queue.get()
-            send_routine(sock, get_IP_dest(ip_datagram), ident, magic, get_ICMP_payload(ip_datagram))
-        sock.close()
+            send_routine(self.sock, get_IP_dest(ip_datagram), ident, magic,
+                         get_ICMP_payload(ip_datagram))
 
 
 class NETWORK(Process):
@@ -48,6 +48,9 @@ class NETWORK(Process):
         Network_Link_queue = Queue()
         Link_Network_queue = Queue()
         mac = MAC(Network_Link_queue, Link_Network_queue)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW,
+                             socket.IPPROTO_ICMP)
+        sock.bind(('', 10001))
         t_module = T_MODULE(self.Transport_Network_queue, Network_Link_queue)
         t_module.start()
         r_module = R_MODULE(Link_Network_queue)
