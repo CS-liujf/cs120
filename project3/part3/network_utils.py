@@ -90,8 +90,8 @@ def get_IP_payload(ip_datagram: list[int]):
     return [1]
 
 
-def get_ICMP_payload(ip_payload: list[int]) -> float:
-    return bin2float(''.join(map(str, ip_payload[IP_HEADER_LEN:])))
+def get_ICMP_payload(ip_datagram: list[int]) -> float:
+    return bin2float(''.join(map(str, ip_datagram[IP_HEADER_LEN:])))
 
 
 def calculate_checksum(icmp):
