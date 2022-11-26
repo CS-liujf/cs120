@@ -55,7 +55,7 @@ def gen_IP_datagram(payload: list[int], _socket: SOCKET):
 def bytes_to_01_list(data: bytes) -> list[int]:
     res = []
     for byte in data:
-        res += [*f'{byte:08b}']
+        res += list(map(int, [*f'{byte:08b}']))
     return res
 
 
