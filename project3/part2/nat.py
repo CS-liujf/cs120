@@ -47,6 +47,7 @@ class NETWORK(Process):
         Link_Network_queue = Queue()
         mac = MAC(Network_Link_queue, Link_Network_queue)
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_socket.bind(('', 10001))
         t_module = T_MODULE(self.Transport_Network_queue, Network_Link_queue, udp_socket)
         t_module.start()
         r_module = R_MODULE(Link_Network_queue, udp_socket)
