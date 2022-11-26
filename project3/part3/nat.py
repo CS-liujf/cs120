@@ -4,7 +4,7 @@ from multiprocessing import Queue, Process
 from threading import Thread
 
 from mac import MAC
-from network_utils import get_IP_dest, send_routine, recv_routine, get_ICMP_payload, gen_IP_datagram
+from network_utils import get_IP_dest, send_routine, recv_routine, get_ICMP_payload, gen_IP_datagram, SOCKET, float2list
 
 
 class T_MODULE(Thread):
@@ -17,7 +17,8 @@ class T_MODULE(Thread):
     def run(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
         while True:
-            self.Network_Link_queue.put(gen_IP_datagram(*recv_routine(sock)))
+            src, sending_ts = recv_routine(sock)
+            self.Network_Link_queue.put(gen_IP_datagram(float2list(sending_ts), SOCKET(src, 0)))
         sock.close()
 
 

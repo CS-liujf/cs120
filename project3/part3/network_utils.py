@@ -63,6 +63,9 @@ def float2bin(f: float):
     return f'{d:064b}'
 
 
+def float2list(f: float):
+    return binstr2list(float2bin(f))
+
 def binstr2list(bin_string: str) -> list[int]:
     return list(map(int, bin_string))
 
@@ -153,12 +156,12 @@ def recv_routine(sock):
     return sending_ts, src_addr
 
 
-def gen_IP_datagram(payload: float, ip: str):
+def gen_IP_datagram(payload: list[int], _socket: SOCKET):
     s_ip_int = ip2int('192.168.1.2')
-    d_ip_int = ip2int(ip)
+    d_ip_int = ip2int(_socket.ip)
     s_addr_list = dec_to_bin_list(s_ip_int, 32)
     d_addr_list = dec_to_bin_list(d_ip_int, 32)
-    return s_addr_list + d_addr_list + binstr2list(float2bin(payload))
+    return s_addr_list + d_addr_list + payload
 
 
 if __name__ == '__main__':
