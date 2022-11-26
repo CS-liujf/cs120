@@ -222,11 +222,15 @@ class RWINDOW(Process):
 
 
 class MAC(Process):
-    def __init__(self, Network_Link_queue: Queue, Link_Network_queue: Queue,
-                 barrier: Barrier_) -> None:
+    def __init__(self,
+                 Network_Link_queue: Queue,
+                 Link_Network_queue: Queue,
+                 barrier: Barrier_ = None) -> None:
         super().__init__()
-        # self.barrier = Barrier(5, print_start)
-        self.barrier = barrier
+        if barrier == None:
+            self.barrier = Barrier(5, print_start)
+        else:
+            self.barrier = barrier
         self.Network_Link_queue = Network_Link_queue
         self.Link_Network_queue = Link_Network_queue
         self.MAC_Tx_pipe, self.Tx_MAC_pipe = Pipe()

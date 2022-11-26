@@ -143,17 +143,25 @@ def unpack_icmp_echo_reply(icmp):
 
 def recv_routine(sock):
     # wait for another icmp packet
-    icmp_packet, (src_addr, _) = sock.recvfrom(46)
+    icmp_packet, src_addr = sock.recvfrom(46)
 
     # unpack it
     result = unpack_icmp_echo_reply(icmp_packet[20:])
-    print('收到了')
+    # print('收到了')
 
     # print info
     _ident, seq, payload = result
 
     sending_ts, = struct.unpack('!d', payload[:8])
-    return sending_ts, src_addr
+    return float2list(sending_ts), SOCKET(*src_addr)
+
+
+def gen_IP_ICMP_datagram(payload: list[int], _socket: SOCKET):
+    s_ip_int = ip2int(_socket.ip)
+    d_ip_int = ip2int('192.168.1.2')
+    s_addr_list = dec_to_bin_list(s_ip_int, 32)
+    d_addr_list = dec_to_bin_list(d_ip_int, 32)
+    return s_addr_list + d_addr_list + payload
 
 
 def gen_IP_datagram(payload: list[int], _socket: SOCKET):
