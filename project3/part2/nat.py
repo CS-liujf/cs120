@@ -32,7 +32,7 @@ class R_MODULE(Thread):
             # get an ip datagram
             ip_datagram: list[int] = self.Link_Network_queue.get()
             addr = get_IP_dest(ip_datagram), get_IP_port(ip_datagram)
-            self.udp_socket.sendto(get_IP_data(ip_datagram), addr)
+            self.udp_socket.sendto(get_IP_data(ip_datagram).encode('utf-8'), addr)
 
 
 class NETWORK(Process):
