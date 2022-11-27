@@ -1,4 +1,5 @@
 import socket
+import time
 
 
 def main():
@@ -19,6 +20,7 @@ def main():
     data = [i.rstrip() for i in data]  # remove \n
     for message in data:
         udp_socket.sendto(message.encode('utf-8'), s_addr)
+        time.sleep(0.1)
 
     udp_socket.close()
 
