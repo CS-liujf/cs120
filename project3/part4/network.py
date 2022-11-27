@@ -32,10 +32,12 @@ class R_MODULE(Thread):
             ip_datagram: list[int] = self.Link_Network_queue.get()
             t = time.time()
             s_ip = get_IP_source(ip_datagram)
-            ip_payload = get_IP_payload(ip_datagram)
-            icmp_payload: str = ''.join(get_ICMP_payload(ip_payload))
-            payload = bin2float(icmp_payload)
-            print({'IP': s_ip, 'payload': payload, 'latency': t - payload})
+            icmp_payload = get_ICMP_payload(ip_datagram)
+            print({
+                'IP': s_ip,
+                'payload': icmp_payload,
+                'latency': t - icmp_payload
+            })
 
 
 class NETWORK(Process):

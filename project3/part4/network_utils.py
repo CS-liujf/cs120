@@ -3,6 +3,7 @@ https://blog.csdn.net/weixin_42000303/article/details/122182539
 '''
 import struct
 from dataclasses import dataclass
+import time
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,7 @@ IP_HEADER_LEN = S_IP_LEN + D_IP_LEN
 
 
 def ip2int(ip: str) -> int:
-    return sum(int(v) * 256**(3 - i) for i, v in enumerate(ip.split(".")))
+    return sum(int(v) * 256 ** (3 - i) for i, v in enumerate(ip.split(".")))
 
 
 def int2ip(number: int) -> str:
@@ -62,17 +63,11 @@ def float2bin(f: float):
     return f'{d:064b}'
 
 
+def float2list(f: float):
+    return binstr2list(float2bin(f))
+
 def binstr2list(bin_string: str) -> list[int]:
     return list(map(int, bin_string))
-
-
-def gen_IP_datagram(payload: list[int], _socket: SOCKET):
-    s_ip_int = ip2int('192.168.1.2')
-    d_ip_int = ip2int(_socket.ip)
-    s_addr_list = dec_to_bin_list(s_ip_int, 32)
-    d_addr_list = dec_to_bin_list(d_ip_int, 32)
-    tot_len = len(payload)
-    return s_addr_list + d_addr_list + payload
 
 
 def get_IP_source(ip_datagram: list[int]) -> str:
@@ -82,7 +77,7 @@ def get_IP_source(ip_datagram: list[int]) -> str:
 
 
 def get_IP_dest(ip_datagram: list[int]):
-    s_ip = ip_datagram[S_IP_LEN:D_IP_LEN]
+    s_ip = ip_datagram[S_IP_LEN:S_IP_LEN + D_IP_LEN]
     ip_num = bin_list_to_dec(s_ip)
     return int2ip(ip_num)
 
@@ -95,8 +90,86 @@ def get_IP_payload(ip_datagram: list[int]):
     return [1]
 
 
-def get_ICMP_payload(ip_payload: list[int]) -> list[int]:
-    return [1]
+def get_ICMP_payload(ip_datagram: list[int]) -> float:
+    return bin2float(''.join(map(str, ip_datagram[IP_HEADER_LEN:])))
+
+
+def calculate_checksum(icmp):
+    highs = icmp[0::2]
+    lows = icmp[1::2]
+
+    checksum = ((sum(highs) << 8) + sum(lows))
+
+    while True:
+        carry = checksum >> 16
+        if carry:
+            checksum = (checksum & 0xffff) + carry
+        else:
+            break
+
+    checksum = ~checksum & 0xffff
+
+    return struct.pack('!H', checksum)
+
+
+def pack_icmp_echo_request(ident, seq, payload):
+    pseudo = struct.pack('!BBHHH', 8, 0, 0, ident, seq) + payload
+    checksum = calculate_checksum(pseudo)
+    return pseudo[:2] + checksum + pseudo[4:]
+
+
+def send_routine(sock, addr, ident, magic, data):
+    seq = 1
+    # packet current time to payload
+    # in order to calculate round trip time from reply
+    payload = struct.pack('!d', data) + magic
+    # pack icmp packet
+    icmp = pack_icmp_echo_request(ident, seq, payload)
+    # send it
+    sock.sendto(icmp, (addr, 0))
+
+
+def unpack_icmp_echo_reply(icmp):
+    _type, code, _, ident, seq, = struct.unpack('!BBHHH', icmp[:8])
+    if _type != 0:
+        return
+    if code != 0:
+        return
+
+    payload = icmp[8:]
+
+    return ident, seq, payload
+
+
+def recv_routine(sock):
+    # wait for another icmp packet
+    icmp_packet, src_addr = sock.recvfrom(46)
+
+    # unpack it
+    result = unpack_icmp_echo_reply(icmp_packet[20:])
+    # print('收到了')
+
+    # print info
+    _ident, seq, payload = result
+
+    sending_ts, = struct.unpack('!d', payload[:8])
+    return float2list(sending_ts), SOCKET(*src_addr)
+
+
+def gen_IP_ICMP_datagram(payload: list[int], _socket: SOCKET):
+    s_ip_int = ip2int(_socket.ip)
+    d_ip_int = ip2int('192.168.1.2')
+    s_addr_list = dec_to_bin_list(s_ip_int, 32)
+    d_addr_list = dec_to_bin_list(d_ip_int, 32)
+    return s_addr_list + d_addr_list + payload
+
+
+def gen_IP_datagram(payload: list[int], _socket: SOCKET):
+    s_ip_int = ip2int('192.168.1.2')
+    d_ip_int = ip2int(_socket.ip)
+    s_addr_list = dec_to_bin_list(s_ip_int, 32)
+    d_addr_list = dec_to_bin_list(d_ip_int, 32)
+    return s_addr_list + d_addr_list + payload
 
 
 if __name__ == '__main__':

@@ -82,13 +82,13 @@ class TWINDOW(Process):
             # self.window[self.size].time = t
             self.size = self.size + 1
             self.seq = (self.seq + 1) % self.max_seq_num
-            print(f'TW发送了frame: {seq}')
+            # print(f'TW发送了frame: {seq}')
             self.MAC_Tx_queue.put_nowait(MAC_Tx_Item(seq, data))
 
     def check_Tx_message(self):
         if not self.Tx_message_queue.empty():
             tx_message = self.Tx_message_queue.get_nowait()
-            print(f'tx_message {tx_message}')
+            # print(f'tx_message {tx_message}')
             for idx, item in enumerate(self.window):
                 if item.seq == tx_message.seq and item.ACK_flag == False:
                     self.window[idx].time = tx_message.time
@@ -138,7 +138,7 @@ class TWINDOW(Process):
                     # print(f'check_time超时: {idx}')
                     self.window[idx].re_count += 1
                     self.window[idx].is_resend = True
-                    print(f'TW发送了frame: {item.seq}')
+                    # print(f'TW发送了frame: {item.seq}')
                     self.MAC_Tx_queue.put_nowait(
                         MAC_Tx_Item(item.seq, item.data))
                     # self.window[idx].time = t
@@ -222,11 +222,15 @@ class RWINDOW(Process):
 
 
 class MAC(Process):
-    def __init__(self, Network_Link_queue: Queue, Link_Network_queue: Queue,
-                 barrier: Barrier_) -> None:
+    def __init__(self,
+                 Network_Link_queue: Queue,
+                 Link_Network_queue: Queue,
+                 barrier: Barrier_ = None) -> None:
         super().__init__()
-        # self.barrier = Barrier(5, print_start)
-        self.barrier = barrier
+        if barrier == None:
+            self.barrier = Barrier(5, print_start)
+        else:
+            self.barrier = barrier
         self.Network_Link_queue = Network_Link_queue
         self.Link_Network_queue = Link_Network_queue
         self.MAC_Tx_pipe, self.Tx_MAC_pipe = Pipe()
@@ -303,7 +307,7 @@ class Tx(Process):
                 t = time.time()
                 if not mac_tx_item.is_ACK:
                     self.Tx_Message_queue.put(Tx_Message(mac_tx_item.seq, t))
-                print(f'Tx发送了一个frame: {mac_tx_item.seq}, 时间: {t}')
+                # print(f'Tx发送了一个frame: {mac_tx_item.seq}, 时间: {t}')
             else:
                 self.stream.write(DUMMY.tobytes())
             # count += 1
