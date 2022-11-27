@@ -14,7 +14,7 @@ def gen_icmp_datagram() -> list[int]:
 
 
 def print_start():
-    print('ping start!')
+    print('waiting ping')
 
 
 def main():
@@ -25,11 +25,6 @@ def main():
     net = NETWORK(Transport_Network_queue, Network_Transport_queue, barrier)
     net.start()
     barrier.wait()  # wait for phy and mac
-    for _ in range(10):
-        data = gen_icmp_datagram()
-        Transport_Network_queue.put(TRANSPORT_ITEM(data, r_addr))
-        time.sleep(1)
-
     net.join()
 
 

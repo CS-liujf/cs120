@@ -3,7 +3,7 @@ from mac import MAC
 from multiprocessing import Queue, Process
 from multiprocessing.synchronize import Barrier as Barrier_
 from threading import Thread
-from network_utils import gen_IP_datagram, get_IP_payload, get_IP_source, bin2float, get_ICMP_payload, TRANSPORT_ITEM
+from network_utils import gen_IP_datagram, get_IP_payload, get_IP_source, bin2float, get_ICMP_payload, TRANSPORT_ITEM, SOCKET
 
 
 class T_MODULE(Thread):
@@ -22,8 +22,10 @@ class T_MODULE(Thread):
 
 
 class R_MODULE(Thread):
-    def __init__(self, Link_Network_queue: Queue) -> None:
+    def __init__(self, Link_Network_queue: Queue,
+                 Network_Link_queue: Queue) -> None:
         self.Link_Network_queue = Link_Network_queue
+        self.Network_Link_queue = Network_Link_queue
         super().__init__()
 
     def run(self):
@@ -36,8 +38,14 @@ class R_MODULE(Thread):
             print({
                 'IP': s_ip,
                 'payload': icmp_payload,
-                'latency': t - icmp_payload
             })
+            icmp_payload = 'Reply'
+            bit_stream = ''.join(
+                ['{0:08b}'.format(ord(x)) for _, x in enumerate(icmp_payload)])
+            data = [int(bit) for bit in bit_stream]
+            d_addr = SOCKET(s_ip, 0)
+            ip_datagram = gen_IP_datagram(data, d_addr)
+            self.Network_Link_queue.put(ip_datagram)
 
 
 class NETWORK(Process):
@@ -54,7 +62,7 @@ class NETWORK(Process):
         mac = MAC(Network_Link_queue, Link_Network_queue, self.barrier)
         t_module = T_MODULE(self.Transport_Network_queue, Network_Link_queue)
         t_module.start()
-        r_module = R_MODULE(Link_Network_queue)
+        r_module = R_MODULE(Link_Network_queue, Network_Link_queue)
         r_module.start()
         mac.start()
         mac.join()
