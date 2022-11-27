@@ -91,7 +91,7 @@ def get_ICMP_payload(ip_datagram: list[int]) -> str:
     res = []
     ip_datagram = ip_datagram[IP_HEADER_LEN:]
     for i in range(0, len(ip_datagram), 8):
-        res.append(chr(int(''.join(map(str, ip_datagram[i*32: (i+1)*32])), 2)))
+        res.append(chr(int(''.join(map(str, ip_datagram[i*8: (i+1)*8])), 2)))
     return ''.join(res)
 
 
