@@ -63,9 +63,6 @@ def float2bin(f: float):
     return f'{d:064b}'
 
 
-def float2list(f: float):
-    return binstr2list(float2bin(f))
-
 def binstr2list(bin_string: str) -> list[int]:
     return list(map(int, bin_string))
 
@@ -90,12 +87,12 @@ def get_IP_payload(ip_datagram: list[int]):
     return [1]
 
 
-def get_ICMP_payload(ip_datagram: list[int]) -> list[float]:
+def get_ICMP_payload(ip_datagram: list[int]) -> str:
     res = []
     ip_datagram = ip_datagram[IP_HEADER_LEN:]
-    for i in range(0, len(ip_datagram), 32):
-        res.append(bin2float(''.join(map(str, ip_datagram[i*32: (i+1)*32]))))
-    return res
+    for i in range(0, len(ip_datagram), 8):
+        res.append(chr(int(''.join(map(str, ip_datagram[i*32: (i+1)*32])), 2)))
+    return ''.join(res)
 
 
 def calculate_checksum(icmp):
@@ -122,11 +119,11 @@ def pack_icmp_echo_request(ident, seq, payload):
     return pseudo[:2] + checksum + pseudo[4:]
 
 
-def send_routine(sock, addr, ident, magic, data: list[float]):
+def send_routine(sock, addr, ident, magic, data: str):
     seq = 1
     # packet current time to payload
     # in order to calculate round trip time from reply
-    payload = struct.pack('!'+'d'*len(data), *data) + magic
+    payload = data.encode('utf-8') + magic
     # pack icmp packet
     icmp = pack_icmp_echo_request(ident, seq, payload)
     # send it
@@ -145,6 +142,13 @@ def unpack_icmp_echo_reply(icmp):
     return ident, seq, payload
 
 
+def bytes2list(payload: bytes) -> list[int]:
+    res = []
+    for byte in payload:
+        res += list(map(int, [*f'{byte:08b}']))
+    return res
+
+
 def recv_routine(sock):
     # wait for another icmp packet
     icmp_packet, src_addr = sock.recvfrom(46)
@@ -156,8 +160,7 @@ def recv_routine(sock):
     # print info
     _ident, seq, payload = result
 
-    chars, = struct.unpack('!'+'d'*(len(payload)//4), payload)
-    return float2list(chars), SOCKET(*src_addr)
+    return bytes2list(payload), SOCKET(*src_addr)
 
 
 def gen_IP_ICMP_datagram(payload: list[int], _socket: SOCKET):
