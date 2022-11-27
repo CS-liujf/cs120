@@ -5,7 +5,6 @@ from threading import Thread
 import time
 from typing import NamedTuple
 import queue as standard_queue
-import sounddevice as sd
 from mac_utils import gen_Mac_frame, gen_PHY_frame, f, get_MAC_payload, get_MAC_seq, input_process, read_data, CHUNK, extract_PHY_frame, extract_MAC_frame, get_ACK_id, DUMMY
 from dataclasses import dataclass
 import numpy as np
