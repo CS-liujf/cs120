@@ -171,7 +171,7 @@ def input_process(input_queue: Queue, Rx_ACK_queue: Queue,
                 else:
                     payload = get_MAC_payload(mac_frame)
                     seq = get_MAC_seq(mac_frame)
-                    print('收到一个data')
+                    # print('收到一个data')
                     Rx_MAC_queue.put_nowait(Rx_MAC_Item(seq, payload))
 
 
@@ -215,10 +215,10 @@ def extract_MAC_frame(phy_frame: np.ndarray) -> list[int] | None:
     decoded_frame = decode_phy_frame(frame_without_preamble)
     # print(len(decoded_frame))
     # then we should check whether this frame is correct by CRC or Hamming
-    print('开始校验CRC')
+    # print('开始校验CRC')
     # print(decoded_frame)
     if CRC8_check(decoded_frame):
-        print('CRC校验成功')
+        # print('CRC校验成功')
         # print(decoded_frame)
         # after that, the CRC or Hamming code must be removed and return
         return decoded_frame[10:len(decoded_frame) - 8]
