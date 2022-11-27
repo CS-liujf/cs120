@@ -96,6 +96,15 @@ def get_ICMP_payload(ip_datagram: list[int]) -> str:
     return ''.join(res)
 
 
+def get_ICMP_id(ip_datagram: list[int]):
+    return bin_list_to_dec(ip_datagram[80:96])
+
+def get_ICMP_checksum(ip_datagram):
+    return bin_list_to_dec(ip_datagram[64:80])
+
+def get_ICMP_seq(ip_datagram):
+    return bin_list_to_dec(ip_datagram[96:112])
+
 def calculate_checksum(icmp):
     highs = icmp[0::2]
     lows = icmp[1::2]
@@ -114,19 +123,17 @@ def calculate_checksum(icmp):
     return struct.pack('!H', checksum)
 
 
-def pack_icmp_echo_request(ident, seq, payload):
-    pseudo = struct.pack('!BBHHH', 8, 0, 0, ident, seq) + payload
-    checksum = calculate_checksum(pseudo)
-    return pseudo[:2] + checksum + pseudo[4:]
+def pack_icmp_echo_request(ident, seq, payload, checksum):
+    pseudo = struct.pack('!BBHHH', 0, 0, checksum, ident, seq) + payload
+    return pseudo
 
 
-def send_routine(sock, addr, ident, magic, data: str):
-    seq = 1
+def send_routine(sock, addr, ident, magic, data: str, checksum, seq):
     # packet current time to payload
     # in order to calculate round trip time from reply
     payload = data.encode('utf-8') + magic
     # pack icmp packet
-    icmp = pack_icmp_echo_request(ident, seq, payload)
+    icmp = pack_icmp_echo_request(ident, seq, payload, checksum)
     # send it
     sock.sendto(icmp, (addr, 0))
 
@@ -153,24 +160,34 @@ def bytes2list(payload: bytes) -> list[int]:
 def recv_routine(sock):
     data = None
     src = None
+    id = None
+    seq = None
+    checksum = None
+    print('开始zhubao')
     def callback(x):
+        x.show()
         nonlocal data
         nonlocal src
-        data = (x['Raw'].load)
+        nonlocal id
+        nonlocal seq
+        data = x['Raw'].load
         src = x['IP'].src
+        id = x['ICMP'].id
+        seq = x['ICMP'].seq
+        checksum = x['ICMP'].checksum
     # wait for another icmp packet
-    sni = sniff(filter='icmp', prn=callback, count=1)
+    sni = sniff(filter='icmp && src host 10.20.192.96', prn=callback, count=1)
     print(data, src)
 
-    return bytes2list(data), SOCKET(src, 0)
+    return bytes2list(data), SOCKET(src, 0), id, seq, checksum
 
 
-def gen_IP_ICMP_datagram(payload: list[int], _socket: SOCKET):
+def gen_IP_ICMP_datagram(payload: list[int], _socket: SOCKET, id, seq, checksum):
     s_ip_int = ip2int(_socket.ip)
     d_ip_int = ip2int('192.168.1.2')
     s_addr_list = dec_to_bin_list(s_ip_int, 32)
     d_addr_list = dec_to_bin_list(d_ip_int, 32)
-    return s_addr_list + d_addr_list + payload
+    return s_addr_list + d_addr_list + dec_to_bin_list(checksum, 16) +dec_to_bin_list(id, 16) + dec_to_bin_list(seq, 16) + payload
 
 
 def gen_IP_datagram(payload: list[int], _socket: SOCKET):

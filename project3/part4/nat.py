@@ -4,7 +4,7 @@ from multiprocessing import Queue, Process
 from threading import Thread
 
 from mac import MAC
-from network_utils import get_IP_dest, send_routine, recv_routine, get_ICMP_payload, gen_IP_ICMP_datagram
+from network_utils import get_IP_dest, send_routine, recv_routine, get_ICMP_payload, gen_IP_ICMP_datagram, get_ICMP_id, get_ICMP_seq, get_ICMP_checksum
 
 
 class T_MODULE(Thread):
@@ -17,9 +17,9 @@ class T_MODULE(Thread):
 
     def run(self):
         while True:
-            payload, src_addr = recv_routine(self.sock)
+            payload, src_addr, id, seq = recv_routine(self.sock)
             self.Network_Link_queue.put(
-                gen_IP_ICMP_datagram(payload, src_addr))
+                gen_IP_ICMP_datagram(payload, src_addr, id, seq))
 
 
 class R_MODULE(Thread):
@@ -29,12 +29,15 @@ class R_MODULE(Thread):
         super().__init__()
 
     def run(self):
-        ident = os.getpid()
         magic = b'1234567890'
         while True:
             ip_datagram: list[int] = self.Link_Network_queue.get()
+            ident = get_ICMP_id(ip_datagram)
+            checksum = get_ICMP_checksum(ip_datagram)
+            seq = get_ICMP_seq(ip_datagram)
+            print(get_IP_dest(ip_datagram))
             send_routine(self.sock, get_IP_dest(ip_datagram), ident, magic,
-                         get_ICMP_payload(ip_datagram))
+                         get_ICMP_payload(ip_datagram), checksum, seq)
 
 
 class NETWORK(Process):
