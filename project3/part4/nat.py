@@ -17,9 +17,9 @@ class T_MODULE(Thread):
 
     def run(self):
         while True:
-            sending_ts, src_addr = recv_routine(self.sock)
+            payload, src_addr = recv_routine(self.sock)
             self.Network_Link_queue.put(
-                gen_IP_ICMP_datagram(sending_ts, src_addr))
+                gen_IP_ICMP_datagram(payload, src_addr))
 
 
 class R_MODULE(Thread):

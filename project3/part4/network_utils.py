@@ -90,8 +90,12 @@ def get_IP_payload(ip_datagram: list[int]):
     return [1]
 
 
-def get_ICMP_payload(ip_datagram: list[int]) -> float:
-    return bin2float(''.join(map(str, ip_datagram[IP_HEADER_LEN:])))
+def get_ICMP_payload(ip_datagram: list[int]) -> list[float]:
+    res = []
+    ip_datagram = ip_datagram[IP_HEADER_LEN:]
+    for i in range(0, len(ip_datagram), 32):
+        res.append(bin2float(''.join(map(str, ip_datagram[i*32: (i+1)*32]))))
+    return res
 
 
 def calculate_checksum(icmp):
@@ -118,11 +122,11 @@ def pack_icmp_echo_request(ident, seq, payload):
     return pseudo[:2] + checksum + pseudo[4:]
 
 
-def send_routine(sock, addr, ident, magic, data):
+def send_routine(sock, addr, ident, magic, data: list[float]):
     seq = 1
     # packet current time to payload
     # in order to calculate round trip time from reply
-    payload = struct.pack('!d', data) + magic
+    payload = struct.pack('!'+'d'*len(data), *data) + magic
     # pack icmp packet
     icmp = pack_icmp_echo_request(ident, seq, payload)
     # send it
@@ -152,8 +156,8 @@ def recv_routine(sock):
     # print info
     _ident, seq, payload = result
 
-    sending_ts, = struct.unpack('!d', payload[:8])
-    return float2list(sending_ts), SOCKET(*src_addr)
+    chars, = struct.unpack('!'+'d'*(len(payload)//4), payload)
+    return float2list(chars), SOCKET(*src_addr)
 
 
 def gen_IP_ICMP_datagram(payload: list[int], _socket: SOCKET):
