@@ -4,6 +4,7 @@ https://blog.csdn.net/weixin_42000303/article/details/122182539
 import struct
 from dataclasses import dataclass
 import time
+from scapy.all import *
 
 
 @dataclass(frozen=True)
@@ -91,7 +92,7 @@ def get_ICMP_payload(ip_datagram: list[int]) -> str:
     res = []
     ip_datagram = ip_datagram[IP_HEADER_LEN:]
     for i in range(0, len(ip_datagram), 8):
-        res.append(chr(int(''.join(map(str, ip_datagram[i*8: (i+1)*8])), 2)))
+        res.append(chr(int(''.join(map(str, ip_datagram[i: (i+8)])), 2)))
     return ''.join(res)
 
 
@@ -150,17 +151,18 @@ def bytes2list(payload: bytes) -> list[int]:
 
 
 def recv_routine(sock):
+    data = None
+    src = None
+    def callback(x):
+        nonlocal data
+        nonlocal src
+        data = (x['Raw'].load)
+        src = x['IP'].src
     # wait for another icmp packet
-    icmp_packet, src_addr = sock.recvfrom(46)
+    sni = sniff(filter='icmp', prn=callback, count=1)
+    print(data, src)
 
-    # unpack it
-    result = unpack_icmp_echo_reply(icmp_packet[20:])
-    # print('收到了')
-
-    # print info
-    _ident, seq, payload = result
-
-    return bytes2list(payload), SOCKET(*src_addr)
+    return bytes2list(data), SOCKET(src, 0)
 
 
 def gen_IP_ICMP_datagram(payload: list[int], _socket: SOCKET):
