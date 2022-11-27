@@ -17,9 +17,9 @@ class T_MODULE(Thread):
 
     def run(self):
         while True:
-            payload, src_addr, id, seq = recv_routine(self.sock)
+            payload, src_addr, id, seq, checksum = recv_routine(self.sock)
             self.Network_Link_queue.put(
-                gen_IP_ICMP_datagram(payload, src_addr, id, seq))
+                gen_IP_ICMP_datagram(payload, src_addr, id, seq, checksum))
 
 
 class R_MODULE(Thread):
@@ -53,7 +53,7 @@ class NETWORK(Process):
         mac = MAC(Network_Link_queue, Link_Network_queue)
         sock = socket.socket(socket.AF_INET, socket.SOCK_RAW,
                              socket.IPPROTO_ICMP)
-        sock.bind(('', 10001))
+        sock.bind(('', 10301))
         t_module = T_MODULE(self.Transport_Network_queue, Network_Link_queue,
                             sock)
         t_module.start()

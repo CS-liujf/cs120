@@ -90,7 +90,7 @@ def get_IP_payload(ip_datagram: list[int]):
 
 def get_ICMP_payload(ip_datagram: list[int]) -> str:
     res = []
-    ip_datagram = ip_datagram[IP_HEADER_LEN:]
+    ip_datagram = ip_datagram[IP_HEADER_LEN+16+32:]
     for i in range(0, len(ip_datagram), 8):
         res.append(chr(int(''.join(map(str, ip_datagram[i: (i+8)])), 2)))
     return ''.join(res)
@@ -123,17 +123,18 @@ def calculate_checksum(icmp):
     return struct.pack('!H', checksum)
 
 
-def pack_icmp_echo_request(ident, seq, payload, checksum):
-    pseudo = struct.pack('!BBHHH', 0, 0, checksum, ident, seq) + payload
-    return pseudo
+def pack_icmp_echo_request(ident, seq, payload):
+    pseudo = struct.pack('!BBHHH', 0, 0, 0, ident, seq) + payload
+    checksum = calculate_checksum(pseudo)
+    return pseudo[:2] + checksum + pseudo[4:]
 
 
 def send_routine(sock, addr, ident, magic, data: str, checksum, seq):
     # packet current time to payload
     # in order to calculate round trip time from reply
-    payload = data.encode('utf-8') + magic
+    payload = data.encode('utf-8')
     # pack icmp packet
-    icmp = pack_icmp_echo_request(ident, seq, payload, checksum)
+    icmp = pack_icmp_echo_request(ident, seq, payload)
     # send it
     sock.sendto(icmp, (addr, 0))
 
@@ -163,21 +164,19 @@ def recv_routine(sock):
     id = None
     seq = None
     checksum = None
-    print('开始zhubao')
     def callback(x):
-        x.show()
         nonlocal data
         nonlocal src
         nonlocal id
         nonlocal seq
+        nonlocal checksum
         data = x['Raw'].load
         src = x['IP'].src
         id = x['ICMP'].id
         seq = x['ICMP'].seq
-        checksum = x['ICMP'].checksum
+        checksum = x['ICMP'].chksum
     # wait for another icmp packet
     sni = sniff(filter='icmp && src host 10.20.192.96', prn=callback, count=1)
-    print(data, src)
 
     return bytes2list(data), SOCKET(src, 0), id, seq, checksum
 
