@@ -37,7 +37,7 @@ def gen_UDP_datagram(payload: list[int], _socket: SOCKET):
 
 
 def main():
-    r_addr = SOCKET('127.0.0.1', 0)
+    r_addr = SOCKET('10.20.196.226', 10000)
     Transport_Network_queue: Queue[TRANSPORT_ITEM] = Queue()
     Network_Transport_queue = Queue()
     net = NETWORK(Transport_Network_queue, Network_Transport_queue)

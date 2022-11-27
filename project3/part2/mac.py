@@ -116,7 +116,7 @@ class TWINDOW(Process):
                 ]
                 self.size = self.size - (offset + 1)
                 self.count += (offset + 1)
-                print(f'已成功发送frame个数: {self.count}')
+                # print(f'已成功发送frame个数: {self.count}')
 
         max_re_count = max(map(lambda x: x.re_count, self.window))
 
@@ -217,7 +217,7 @@ class RWINDOW(Process):
                 #change LFR
                 self.LFR = (self.LFR + offset + 1) % self.max_seq_num
                 self.count += (offset + 1)
-                print(f'成功接收frame的个数: {self.count}')
+                # print(f'成功接收frame的个数: {self.count}')
 
 
 class MAC(Process):
