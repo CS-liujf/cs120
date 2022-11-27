@@ -3,7 +3,7 @@ from mac import MAC
 from multiprocessing import Queue, Process
 from multiprocessing.synchronize import Barrier as Barrier_
 from threading import Thread
-from network_utils import gen_IP_datagram, get_IP_payload, get_IP_source, bin2float, get_ICMP_payload, TRANSPORT_ITEM, SOCKET
+from network_utils import gen_IP_ICMP_datagram, gen_IP_datagram, get_IP_source, get_ICMP_payload, TRANSPORT_ITEM, SOCKET
 
 
 class T_MODULE(Thread):
@@ -44,7 +44,7 @@ class R_MODULE(Thread):
                 ['{0:08b}'.format(ord(x)) for _, x in enumerate(icmp_payload)])
             data = [int(bit) for bit in bit_stream]
             d_addr = SOCKET(s_ip, 0)
-            ip_datagram = gen_IP_datagram(data, d_addr)
+            ip_datagram = gen_IP_ICMP_datagram(data, d_addr)
             self.Network_Link_queue.put(ip_datagram)
 
 
