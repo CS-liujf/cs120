@@ -23,7 +23,7 @@ def print_start(msg: str = ''):
 @dataclass
 class TWINDOW_ITEM:
     seq: int = None
-    data: list[int] = None
+    data: bytes = None
     time: float = None
     ACK_flag: bool = False
     is_resend: bool = False
@@ -32,7 +32,7 @@ class TWINDOW_ITEM:
 
 class MAC_Tx_Item(NamedTuple):
     seq: int
-    data: list[int]
+    data: bytes
     is_ACK: bool = False
 
 
@@ -43,7 +43,8 @@ class Tx_Message(NamedTuple):
 
 class TWINDOW(Process):
     def __init__(self, capacity: int, max_seq_num: int,
-                 Network_Link_queue: Queue, MAC_Tx_queue: 'Queue[MAC_Tx_Item]',
+                 Network_Link_queue: 'Queue[bytes]',
+                 MAC_Tx_queue: 'Queue[MAC_Tx_Item]',
                  Tx_message_queue: 'Queue[Tx_Message]', Rx_ACK_queue: Queue,
                  barrier: Barrier_):
         self.capacity = capacity
@@ -146,25 +147,26 @@ class TWINDOW(Process):
 @dataclass
 class RWINDOW_ITEM:
     seq: int = None
-    data: list[int] = None
+    data: bytes = None
     ACK_flag: bool = False
 
 
 class Rx_MAC_Item(NamedTuple):
     seq: int
-    data: list[int]
+    data: bytes
 
 
 class RWINDOW(Process):
     def __init__(self, capacity: int, max_seq_num: int,
-                 Link_Network_queue: Queue, MAC_Tx_queue: Queue,
-                 Rx_MAC_queue: Queue, barrier: Barrier_):
+                 Link_Network_queue: 'Queue[bytes]',
+                 MAC_Tx_queue: 'Queue[MAC_Tx_Item]',
+                 Rx_MAC_queue: 'Queue[Rx_MAC_Item]', barrier: Barrier_):
         self.size = 0
         self.capacity = capacity
         self.max_seq_num = max_seq_num
-        self.Link_Network_queue: Queue[list[int]] = Link_Network_queue
-        self.MAC_Tx_queue: Queue[MAC_Tx_Item] = MAC_Tx_queue
-        self.Rx_MAC_queue: Queue[Rx_MAC_Item] = Rx_MAC_queue
+        self.Link_Network_queue = Link_Network_queue
+        self.MAC_Tx_queue = MAC_Tx_queue
+        self.Rx_MAC_queue = Rx_MAC_queue
         self.window: list[RWINDOW_ITEM] = [
             RWINDOW_ITEM() for _ in range(self.capacity)
         ]
@@ -342,19 +344,22 @@ def main():
     Network_Link_queue = Queue(maxsize=10)
     Link_Network_queue = Queue(maxsize=60)
     # Link_Network_queue=
-    data_list = read_data()
+    # data_list = read_data()
     mac = MAC(Network_Link_queue, Link_Network_queue)
     mac.start()
     # frame transfered from Network layer to Link layer
     time.sleep(1)
     try:
-        for idx, data in enumerate(data_list):
-            Network_Link_queue.put(data, timeout=20)
-        else:
-            print('transmittion end')
+        for _ in range(10):
+            Network_Link_queue.put(50*'a'.encode('utf-8'))
+        # for idx, data in enumerate(data_list):
+        #     Network_Link_queue.put(data, timeout=20)
+        # else:
+        #     print('transmittion end')
         # while True:
         # Network_Link_queue.put([1 for _ in range(100)])
         # pass
+        mac.join()
     except:
         print('Network timeout!')
 

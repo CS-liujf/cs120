@@ -3,11 +3,12 @@ from scipy import integrate
 from crc import CrcCalculator, Crc8
 from queue import Queue
 from typing import NamedTuple
+import struct
 
 
 class Rx_MAC_Item(NamedTuple):
     seq: int
-    data: list[int]
+    data: bytes
 
 
 def CRC8_encode(data: list[int]):
@@ -78,7 +79,17 @@ def dec_to_bin_list(number: int, length: int) -> list[int]:
     return [int(x) for x in f'{{0:0{length}b}}'.format(number)]
 
 
-def gen_Mac_frame(payload: list[int] = None,
+def bytes_2_bin_list(b: bytes) -> list[int]:
+    bin_str = ''.join(f'{x:08b}' for x in b)
+    return [int(bit) for bit in bin_str]
+
+
+def bit_list_2_bytes(bit_list: list[int]) -> bytes:
+    bit_str = ''.join(map(str, bit_list))
+    return bytes(int(bit_str[i:i + 8], 2) for i in range(0, len(bit_str), 8))
+
+
+def gen_Mac_frame(payload: bytes = None,
                   frame_dest=0,
                   frame_src=0,
                   frame_seq: int = 0,
@@ -88,6 +99,7 @@ def gen_Mac_frame(payload: list[int] = None,
         dest_with_src = [0 for _ in range(MAC_DEST_LEN + MAC_SRC_LEN)]
         frame_type = [0 for _ in range(MAC_TYPE_LEN)]  #0000 for not ACK
         seq = dec_to_bin_list(frame_seq, MAC_SEQ_LEN)
+        payload = bytes_2_bin_list(payload)
         return dest_with_src + frame_type + seq + payload
     else:
         dest_with_src = [0 for _ in range(MAC_DEST_LEN + MAC_SRC_LEN)]
@@ -240,8 +252,9 @@ def get_ACK_id(mac_frame: list[int]) -> int:
         return ACK_id
 
 
-def get_MAC_payload(mac_frame: list[int]) -> list[int]:
-    return mac_frame[MAC_HEAD_LEN:]
+def get_MAC_payload(mac_frame: list[int]) -> bytes:
+    mac_payload = mac_frame[MAC_HEAD_LEN:]
+    return bit_list_2_bytes(mac_payload)
 
 
 def get_MAC_seq(mac_frame: list[int]) -> int:
@@ -258,10 +271,4 @@ if __name__ == '__main__':
     # leng = 10
     # a = f'{{0:0{leng}b}}'.format(2)
     # print(a)
-    from typing import NamedTuple
-
-    # class A(NamedTuple):
-    #     age: int
-    #     name: str
-    a = np.array([1, 2, 3, 4, 5])
-    print(type(np.where(a > 3)[0]))
+    print(bit_list_2_bytes([0, 0, 0, 0, 0, 0, 0, 1]))
