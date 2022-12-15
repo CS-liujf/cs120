@@ -1,4 +1,5 @@
 from multiprocessing import Process, Manager, Event, Queue, Barrier
+from multiprocessing.synchronize import Barrier as Barrier_
 from threading import Thread
 from dataclasses import dataclass
 from queue import Queue as _Queue
@@ -51,19 +52,22 @@ class R_THREAD(Thread):
 
 
 class TCP(Process):
-    def __init__(self) -> None:
+    def __init__(self, barrier: Barrier_ = None) -> None:
         self.tcp_table: dict[str, TCP_ITEM] = Manager().dict()
         self.event = Event()
-        # self.barrier = Barrier(6, lambda: self.event.set())
-        self.barrier = Barrier(6)
+        self.barrier = Barrier(6, self.set_status)
         # self.Transport_Network_queue: Queue[bytes] = Queue()
         # self.Network_Transport_queue: Queue[bytes] = Queue()
         super().__init__()
 
+    def set_status(self):
+        self.event.set()
+
     def run(self) -> None:
         Transport_Network_queue: Queue[TRAN_NET_ITEM] = Queue()
         Network_Transport_queue: Queue[bytes] = Queue()
-        network = NETWORK(Transport_Network_queue, Network_Transport_queue)
+        network = NETWORK(Transport_Network_queue, Network_Transport_queue,
+                          self.barrier)
         network.start()
         self.barrier.wait()
         while True:
@@ -97,6 +101,11 @@ class TCP(Process):
             return 1
 
         return -1
+
+    def get_status(self):
+        if self.event.is_set():
+            return 1
+        return 0
 
 
 if __name__ == '__main__':
