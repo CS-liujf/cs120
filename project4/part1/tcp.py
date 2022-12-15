@@ -54,35 +54,41 @@ class R_THREAD(Thread):
 class TCP(Process):
     def __init__(self, barrier: Barrier_ = None) -> None:
         self.tcp_table: dict[str, TCP_ITEM] = Manager().dict()
-        self.event = Event()
-        self.barrier = Barrier(6, self.set_status)
+        self.__event = Event()
+        self.__barrier = Barrier(6, self.set_status)
         # self.Transport_Network_queue: Queue[bytes] = Queue()
         # self.Network_Transport_queue: Queue[bytes] = Queue()
         super().__init__()
 
     def set_status(self):
-        self.event.set()
+        self.__event.set()
 
     def run(self) -> None:
         Transport_Network_queue: Queue[TRAN_NET_ITEM] = Queue()
         Network_Transport_queue: Queue[bytes] = Queue()
         network = NETWORK(Transport_Network_queue, Network_Transport_queue,
-                          self.barrier)
+                          self.__barrier)
         network.start()
-        self.barrier.wait()
+        self.__barrier.wait()
         while True:
             pass
 
-    def bind(self, port: int):
+    def bind(self, _socket: SOCKET):
+        port = _socket.port
         if str(port) in self.tcp_table:
             print('error: Address already in use')
-        self.tcp_table[str(port)] = 1
+        self.tcp_table[str(port)] = TCP_ITEM(_socket)
 
     def connect(self, d_addr: D_ADDR, _socket: SOCKET):
         #three way handshake
         port = _socket.port
-        self.tcp_table[str(port)].d_addr = d_addr
-        self.tcp_table[str(port)].is_connected = True
+        if str(port) in self.tcp_table.keys():
+            self.tcp_table[str(port)].d_addr = d_addr
+            self.tcp_table[str(port)].is_connected = True
+        else:
+            self.tcp_table[str(port)] = TCP_ITEM(_socket,
+                                                 d_addr,
+                                                 is_connected=True)
 
     def read(self, _socket: SOCKET):
         port = _socket.port
@@ -103,7 +109,7 @@ class TCP(Process):
         return -1
 
     def get_status(self):
-        if self.event.is_set():
+        if self.__event.is_set():
             return 1
         return 0
 
