@@ -1,13 +1,14 @@
-from multiprocessing import Process, Manager, Event, Queue
+from multiprocessing import Process, Manager, Event, Queue, Barrier
 from threading import Thread
 from dataclasses import dataclass
 from queue import Queue as _Queue
-from network import NETWORK, D_ADDR, TRAN_NET_ITEM
-from tcp_utils import SOCKET, gen_tcp_packet, get_tcp_d_port, get_tcp_payload
+from network import NETWORK, TRAN_NET_ITEM
+from tcp_utils import SOCKET, D_ADDR, gen_tcp_packet, get_tcp_d_port, get_tcp_payload
 
 
 @dataclass
 class TCP_ITEM:
+    socket: SOCKET = None
     d_addr: D_ADDR = None
     seq: int = 0
     is_connected: bool = False
@@ -30,7 +31,8 @@ class T_THREAD(Thread):
                 if not tcp_item.t_queue.empty():
                     tcp_packet = gen_tcp_packet()
                     self.Transport_Network_queue.put_nowait(
-                        TRAN_NET_ITEM(1, tcp_item.d_addr, tcp_packet, 'TCP'))
+                        TRAN_NET_ITEM(tcp_item.socket, tcp_item.d_addr,
+                                      tcp_packet, 'TCP'))
 
 
 class R_THREAD(Thread):
@@ -52,6 +54,8 @@ class TCP(Process):
     def __init__(self) -> None:
         self.tcp_table: dict[str, TCP_ITEM] = Manager().dict()
         self.event = Event()
+        # self.barrier = Barrier(6, lambda: self.event.set())
+        self.barrier = Barrier(6)
         # self.Transport_Network_queue: Queue[bytes] = Queue()
         # self.Network_Transport_queue: Queue[bytes] = Queue()
         super().__init__()
@@ -61,7 +65,8 @@ class TCP(Process):
         Network_Transport_queue: Queue[bytes] = Queue()
         network = NETWORK(Transport_Network_queue, Network_Transport_queue)
         network.start()
-        while not self.event.is_set():
+        self.barrier.wait()
+        while True:
             pass
 
     def bind(self, port: int):
@@ -69,8 +74,9 @@ class TCP(Process):
             print('error: Address already in use')
         self.tcp_table[str(port)] = 1
 
-    def connect(self, d_addr: D_ADDR, port: int = None):
+    def connect(self, d_addr: D_ADDR, _socket: SOCKET):
         #three way handshake
+        port = _socket.port
         self.tcp_table[str(port)].d_addr = d_addr
         self.tcp_table[str(port)].is_connected = True
 

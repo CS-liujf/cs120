@@ -1,11 +1,16 @@
 from enum import Enum, unique
 from dataclasses import dataclass
-from network import D_ADDR
 import struct
 
 
 @dataclass(frozen=True)
 class SOCKET:
+    ip: str
+    port: int
+
+
+@dataclass(frozen=True)
+class D_ADDR:
     ip: str
     port: int
 
@@ -45,6 +50,7 @@ def get_tcp_payload(tcp_packet: bytes) -> bytes:
 
 
 if __name__ == '__main__':
-    b = struct.pack('!III', 10, 11, 20)
-    print(b[1:])
+    # b = struct.pack('!III', 10, 11, 20)
+    # print(b[1:])
+    print(hash(SOCKET('19', 3020)))
     # print(struct.unpack_from('!I', b, 20))
