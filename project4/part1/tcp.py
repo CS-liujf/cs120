@@ -3,7 +3,7 @@ from threading import Thread
 from dataclasses import dataclass
 from queue import Queue as _Queue
 from network import NETWORK, D_ADDR, TRAN_NET_ITEM
-from tcp_utils import SOCKET, gen_tcp_packet, get_tcp_s_port, get_tcp_payload
+from tcp_utils import SOCKET, gen_tcp_packet, get_tcp_d_port, get_tcp_payload
 
 
 @dataclass
@@ -43,7 +43,7 @@ class R_THREAD(Thread):
     def run(self):
         if not self.Network_Transport_queue.empty():
             tcp_packet = self.Network_Transport_queue.get_nowait()
-            tcp_port = get_tcp_s_port(tcp_packet)
+            tcp_port = get_tcp_d_port(tcp_packet)
             tcp_payload = get_tcp_payload(tcp_packet)
             self.tcp_table[str(tcp_port)].r_queue.put_nowait(tcp_payload)
 
