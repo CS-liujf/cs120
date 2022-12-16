@@ -14,8 +14,8 @@ class TCP_ITEM:
     seq: int = 0
     is_connected: bool = False
     is_closed: bool = True
-    t_queue: _Queue[bytes] = None  # send data
-    r_queue: _Queue[bytes] = None  #recv data
+    t_buffer: bytes = b''  # send data
+    r_buffer: bytes = b''  #recv data
 
 
 class T_THREAD(Thread):
@@ -29,11 +29,19 @@ class T_THREAD(Thread):
         while True:
             for key in self.tcp_table.keys():
                 tcp_item = self.tcp_table[key]
-                if not tcp_item.t_queue.empty():
-                    tcp_packet = gen_tcp_packet()
+                if len(tcp_item.t_buffer) != 0:
+                    length = min(64, len(tcp_item.t_buffer))
+                    tcp_packet = gen_tcp_packet(
+                        tcp_item.d_addr,
+                        0,
+                        0,
+                        tcp_item.socket.port,
+                        payload=tcp_item.t_buffer[:length])
                     self.Transport_Network_queue.put_nowait(
                         TRAN_NET_ITEM(tcp_item.socket, tcp_item.d_addr,
                                       tcp_packet, 'TCP'))
+                    tcp_item.t_buffer = tcp_item.t_buffer[length:]
+                    self.tcp_table[key] = tcp_item
 
 
 class R_THREAD(Thread):
@@ -48,7 +56,9 @@ class R_THREAD(Thread):
             tcp_packet = self.Network_Transport_queue.get_nowait()
             tcp_port = get_tcp_d_port(tcp_packet)
             tcp_payload = get_tcp_payload(tcp_packet)
-            self.tcp_table[str(tcp_port)].r_queue.put_nowait(tcp_payload)
+            tcp_item = self.tcp_table[str(tcp_port)]
+            tcp_item.r_buffer = tcp_item.r_buffer + tcp_payload
+            self.tcp_table[str(tcp_port)] = tcp_item
 
 
 class TCP(Process):
@@ -90,12 +100,18 @@ class TCP(Process):
                                                  d_addr,
                                                  is_connected=True)
 
-    def read(self, _socket: SOCKET):
+    def read(self,
+             _socket: SOCKET,
+             blocking: bool = None,
+             buffer_size: int = None):
         port = _socket.port
         tcp_item = self.tcp_table[str(port)]
-        while (not tcp_item.is_closed()) or (not tcp_item.r_queue.empty()):
-            if not tcp_item.r_queue.empty():
-                return tcp_item.r_queue.get_nowait()
+        print(tcp_item)
+        if not tcp_item.is_closed():
+            temp = tcp_item.r_buffer
+            tcp_item.r_buffer = b''
+            self.tcp_table[str(port)] = tcp_item
+            return temp
 
         return -1
 
@@ -103,7 +119,8 @@ class TCP(Process):
         port = _socket.port
         tcp_item = self.tcp_table[str(port)]
         if tcp_item.is_connected:
-            tcp_item.t_queue.put_nowait(data)
+            tcp_item.t_buffer = tcp_item.t_buffer + data
+            self.tcp_table[str(port)] = tcp_item
             return 1
 
         return -1
@@ -115,4 +132,12 @@ class TCP(Process):
 
 
 if __name__ == '__main__':
-    print('fs')
+    import time
+    tcp = TCP()
+    tcp.start()
+    time.sleep(3)
+    _socket = SOCKET('10', 10)
+    d_addr = D_ADDR('12', 10)
+    tcp.connect(d_addr, _socket)
+    tcp.write(_socket, b'a')
+    tcp.join()
