@@ -1,4 +1,4 @@
-from ftp_utils import check_address_input, check_command_input
+from ftp_utils import check_addr_input, check_cmd_input
 from tcp import TCP
 from tcp_utils import SOCKET, D_ADDR
 import pyfiglet
@@ -10,17 +10,54 @@ class FTP:
         result = pyfiglet.figlet_format(text="Athernet  FTP".upper(),
                                         font="slant")
         print(result)
+        self.CMD_TABLE = {
+            'USER': self.user_func,
+            'PASS': self.pass_func,
+            'PWD': self.pwd_func,
+            'CWD': self.cwd_func,
+            'PASV': self.pasv_func,
+            'LIST': self.list_func,
+            'RETR': self.retr_func
+        }
         self.tcp = tcp if tcp != None else TCP()
         self.command_socket = SOCKET('192.168.1.2', 10000)
         self.tcp.start()
         while self.tcp.get_status() != 1:
             pass
-        while not check_address_input(
+        while not check_addr_input(
                 server_addr := input('Server IP address: ')):
             pass
         self.server_command_addr = D_ADDR(server_addr, 21)
         self.tcp.connect(self.server_command_addr, self.command_socket)
         print(f'Connected to {server_addr}.')
+
+    def user_func(self, cmd_str: str):
+        self.send_ftpcmd(cmd_str)
+        self.get_ftpcmd_status()
+
+    def pass_func(self, cmd_str: str):
+        self.send_ftpcmd(cmd_str)
+        self.get_ftpcmd_status()
+
+    def pwd_func(self, cmd_str: str):
+        self.send_ftpcmd(cmd_str)
+        self.get_ftpcmd_status()
+
+    def cwd_func(self, cmd_str: str):
+        self.send_ftpcmd(cmd_str)
+        self.get_ftpcmd_status()
+
+    def pasv_func(self, cmd_str: str):
+        self.send_ftpcmd(cmd_str)
+        self.get_ftpcmd_status()
+
+    def list_func(self, cmd_str: str):
+        self.send_ftpcmd(cmd_str)
+        self.get_ftpcmd_status()
+
+    def retr_func(self, cmd_str: str):
+        self.send_ftpcmd(cmd_str)
+        self.get_ftpcmd_status()
 
     def start(self):
         while True:
@@ -29,14 +66,14 @@ class FTP:
             self.get_ftpcmd_status()
 
     def command_input(self) -> str:
-        while not check_command_input(
+        while not check_cmd_input(
                 command_str := input('Please input FTP command: ')):
             pass
         temp = command_str.split()
         temp[0].upper()
         return ' '.join(temp)
 
-    def send_ftpcmd(self, _socket: SOCKET, command_str: str):
+    def send_ftpcmd(self, command_str: str):
         self.tcp.write(self.command_socket, command_str.encode('utf-8'))
 
     def get_ftpcmd_status(self) -> int:
