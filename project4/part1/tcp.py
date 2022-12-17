@@ -110,9 +110,10 @@ class TCP(Process):
              buffer_size: int = None):
         port = _socket.port
         tcp_item = self.tcp_table[str(port)]
-        print(tcp_item)
         if not tcp_item.is_closed:
             temp = tcp_item.r_buffer
+            if len(temp) == 0:
+                return b''
             tcp_item.r_buffer = b''
             self.tcp_table[str(port)] = tcp_item
             return temp
