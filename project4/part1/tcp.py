@@ -51,13 +51,14 @@ class R_PROCESS(Process):
         super().__init__()
 
     def run(self):
-        if not self.Network_Transport_queue.empty():
-            tcp_packet = self.Network_Transport_queue.get_nowait()
-            tcp_port = get_tcp_d_port(tcp_packet)
-            tcp_payload = get_tcp_payload(tcp_packet)
-            tcp_item = self.tcp_table[str(tcp_port)]
-            tcp_item.r_buffer = tcp_item.r_buffer + tcp_payload
-            self.tcp_table[str(tcp_port)] = tcp_item
+        while True:
+            if not self.Network_Transport_queue.empty():
+                tcp_packet = self.Network_Transport_queue.get_nowait()
+                tcp_port = get_tcp_d_port(tcp_packet)
+                tcp_payload = get_tcp_payload(tcp_packet)
+                tcp_item = self.tcp_table[str(tcp_port)]
+                tcp_item.r_buffer = tcp_item.r_buffer + tcp_payload
+                self.tcp_table[str(tcp_port)] = tcp_item
 
 
 class TCP(Process):
@@ -110,7 +111,7 @@ class TCP(Process):
         port = _socket.port
         tcp_item = self.tcp_table[str(port)]
         print(tcp_item)
-        if not tcp_item.is_closed():
+        if not tcp_item.is_closed:
             temp = tcp_item.r_buffer
             tcp_item.r_buffer = b''
             self.tcp_table[str(port)] = tcp_item
