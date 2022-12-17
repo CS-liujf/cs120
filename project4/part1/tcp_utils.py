@@ -23,12 +23,12 @@ class TCP_FLAG(Enum):
 def gen_tcp_packet(d_addr: D_ADDR,
                    seq: int,
                    flag,
-                   port,
+                   s_port,
                    ack_num=0,
                    window=1,
                    urg_ptr=0,
                    payload: bytes = None) -> bytes:
-    tcp_header = struct.pack('!HHIIBBHHH', port, d_addr.port, seq, ack_num,
+    tcp_header = struct.pack('!HHIIBBHHH', s_port, d_addr.port, seq, ack_num,
                              5 << 4, flag, window, 0, urg_ptr)
     return tcp_header + payload
 
