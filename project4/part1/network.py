@@ -3,7 +3,7 @@ from mac import MAC
 from multiprocessing import Queue, Process, Barrier
 from multiprocessing.synchronize import Barrier as Barrier_
 from threading import Thread
-from network_utils import gen_Anet_IP_datagram
+from network_utils import gen_Anet_IP_datagram, get_Anet_IP_payload
 from dataclasses import dataclass
 from tcp_utils import SOCKET, D_ADDR
 
@@ -25,7 +25,11 @@ class T_MODULE(Thread):
 
     def run(self):
         while True:
-            pass
+            tran_item = self.Transport_Network_queue.get()
+            ip_datagram_Anet = gen_Anet_IP_datagram(tran_item.socket.ip,
+                                                    tran_item.d_addr.ip, 'TCP',
+                                                    tran_item.payload)
+            self.Network_Link_queue.put(ip_datagram_Anet)
 
 
 class R_MODULE(Thread):
@@ -37,9 +41,10 @@ class R_MODULE(Thread):
 
     def run(self):
         while True:
-            pass
+            ip_datagram_Anet = self.Link_Network_queue.get()
+            ip_payload = get_Anet_IP_payload(ip_datagram_Anet)
+            self.Network_Transport_queue.put(ip_payload)
             # get an ip datagram
-            # ip_datagram: bytes = self.Link_Network_queue.get()
             # here, we get athernet ip datagram and change it to standard ip datagram
 
 
