@@ -38,11 +38,11 @@ def check_tcp_flag(tcp_packet: bytes):
 
 
 def get_tcp_s_port(tcp_packet: bytes) -> int:
-    return struct.unpack_from('!H', tcp_packet)
+    return struct.unpack_from('!H', tcp_packet)[0]
 
 
 def get_tcp_d_port(tcp_packet: bytes) -> int:
-    return struct.unpack_from('!H', tcp_packet, 2)
+    return struct.unpack_from('!H', tcp_packet, 2)[0]
 
 
 def get_tcp_payload(tcp_packet: bytes) -> bytes:
