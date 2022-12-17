@@ -28,6 +28,11 @@ def gen_Anet_IP_datagram(
     return header + payload
 
 
+def get_Anet_IP_payload(ip_datagram: bytes):
+    # 1byte protocol, 4bytes source ip, 4bytes destination ip
+    return ip_datagram[9:]
+
+
 if __name__ == '__main__':
     s = b'\x06'
     print(s.decode('utf-8'))
