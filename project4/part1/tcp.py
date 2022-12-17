@@ -1,6 +1,5 @@
 from multiprocessing import Process, Manager, Event, Queue, Barrier
 from multiprocessing.synchronize import Barrier as Barrier_
-from threading import Thread
 from dataclasses import dataclass
 from queue import Queue as _Queue
 from network import NETWORK, TRAN_NET_ITEM
@@ -18,7 +17,7 @@ class TCP_ITEM:
     r_buffer: bytes = b''  #recv data
 
 
-class T_THREAD(Thread):
+class T_PROCESS(Process):
     def __init__(self, tcp_table: dict[str, TCP_ITEM],
                  Transport_Network_queue: 'Queue[TRAN_NET_ITEM]') -> None:
         self.tcp_table = tcp_table
@@ -44,9 +43,9 @@ class T_THREAD(Thread):
                     self.tcp_table[key] = tcp_item
 
 
-class R_THREAD(Thread):
-    def __init__(self, Network_Transport_queue: 'Queue[bytes]',
-                 tcp_table: dict[str, TCP_ITEM]) -> None:
+class R_PROCESS(Process):
+    def __init__(self, tcp_table: dict[str, TCP_ITEM],
+                 Network_Transport_queue: 'Queue[bytes]') -> None:
         self.Network_Transport_queue = Network_Transport_queue
         self.tcp_table = tcp_table
         super().__init__()
@@ -79,6 +78,10 @@ class TCP(Process):
         network = NETWORK(Transport_Network_queue, Network_Transport_queue,
                           self.__barrier)
         network.start()
+        t_process = T_PROCESS(self.tcp_table, Transport_Network_queue)
+        t_process.start()
+        r_process = R_PROCESS(self.tcp_table, Network_Transport_queue)
+        r_process.start()
         self.__barrier.wait()
         while True:
             pass
@@ -136,8 +139,8 @@ if __name__ == '__main__':
     tcp = TCP()
     tcp.start()
     time.sleep(3)
-    _socket = SOCKET('10', 10)
-    d_addr = D_ADDR('12', 10)
+    _socket = SOCKET('192.168.0.2', 10)
+    d_addr = D_ADDR('192.168.0.1', 10)
     tcp.connect(d_addr, _socket)
-    tcp.write(_socket, b'a')
+    tcp.write(_socket, b'abc')
     tcp.join()
