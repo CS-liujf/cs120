@@ -1,7 +1,7 @@
 COMMAND_LIST = ['USER', 'PASS', 'PWD', 'CWD', 'PASV', 'LIST', 'RETR']
 
 
-def check_address_input(address: str) -> bool:
+def check_addr_input(address: str) -> bool:
     temp = address.split('.')
     if len(temp) != 4:
         return False
@@ -27,7 +27,7 @@ def recursive_lcs(str_a: str, str_b: str):
              recursive_lcs(str_a, str_b[1:])])
 
 
-def check_command_input(command_str: str) -> bool:
+def check_cmd_input(command_str: str) -> bool:
     if len(command_str) == 0:
         return False
     command = command_str.split()[0]
