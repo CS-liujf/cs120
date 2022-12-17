@@ -16,7 +16,7 @@ class TRAN_NET_ITEM:
     protocol: str
 
 
-class T_MODULE(Thread):
+class T_MODULE(Process):
     def __init__(self, Transport_Network_queue: 'Queue[TRAN_NET_ITEM]',
                  Network_Link_queue: 'Queue[bytes]') -> None:
         self.Transport_Network_queue = Transport_Network_queue
@@ -32,7 +32,7 @@ class T_MODULE(Thread):
             self.Network_Link_queue.put(ip_datagram_Anet)
 
 
-class R_MODULE(Thread):
+class R_MODULE(Process):
     def __init__(self, Link_Network_queue: 'Queue[bytes]',
                  Network_Transport_queue: 'Queue[bytes]') -> None:
         self.Link_Network_queue = Link_Network_queue
@@ -64,7 +64,7 @@ class NETWORK(Process):
         mac = MAC(Network_Link_queue, Link_Network_queue, self.barrier)
         t_module = T_MODULE(self.Transport_Network_queue, Network_Link_queue)
         t_module.start()
-        r_module = R_MODULE(Link_Network_queue)
+        r_module = R_MODULE(Link_Network_queue, self.Network_Transport_queue)
         r_module.start()
         mac.start()
         mac.join()
