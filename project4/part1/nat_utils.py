@@ -33,6 +33,39 @@ def gen_Anet_IP_datagram(
     return header + payload
 
 
+def gen_tcp_packet(d_addr: D_ADDR,
+                   seq: int,
+                   flag,
+                   s_port,
+                   ack_num=0,
+                   window=1,
+                   urg_ptr=0,
+                   payload: bytes = None) -> bytes:
+    tcp_header = struct.pack('!HHIIBBHHH', s_port, d_addr.port, seq, ack_num,
+                             5 << 4, flag, window, 0, urg_ptr)
+    return tcp_header + payload
+
+
+def get_tcp_payload_from_IP(data: bytes) -> str:
+    exclude_IP_header = data[1*1+4*2:]
+    extract_from_tcp_packed = exclude_IP_header[2*2+4*2+1*2+2*3:]
+    return extract_from_tcp_packed.decode('utf-8')
+
+
+def split_ftp_data(data: str) -> list[str]:
+    """split string data to 64 bytes string in list"""
+    frame_len = 64
+    if len(data) < frame_len:
+        return [data]
+    res = []
+    for i in range(len(data)//frame_len):
+        res.append(data[i*frame_len:(i+1)*frame_len])
+    if x := data[frame_len*(len(data)//frame_len):]:
+        res.append(x)
+    return res
+
+
+
 if __name__ == '__main__':
     s = b'\x06'
     print(s.decode('utf-8'))
