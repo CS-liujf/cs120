@@ -99,7 +99,7 @@ class FTP:
     def start(self):
         while True:
             command_str = self.command_input() + '\r\n'
-            self.send_ftpcmd()
+            self.send_ftpcmd(command_str)
             self.get_ftpcmd_status()
 
     def command_input(self) -> str:
@@ -129,8 +129,5 @@ class FTP:
 
 
 if __name__ == '__main__':
-    # ftp = FTP()
-    # ftp.start()
-    b = b'\r\n'
-    if b'\r\n' in b:
-        print('yes')
+    ftp = FTP()
+    ftp.start()
