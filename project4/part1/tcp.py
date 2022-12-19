@@ -113,7 +113,8 @@ class TCP(Process):
         else:
             self.tcp_table[str(port)] = TCP_ITEM(_socket,
                                                  d_addr,
-                                                 is_connected=True)
+                                                 is_connected=True,
+                                                 is_closed=False)
 
     def read(self,
              _socket: SOCKET,
