@@ -107,7 +107,7 @@ class FTP:
                 command_str := input('Please input FTP command: ')):
             pass
         temp = command_str.split()
-        temp[0].upper()
+        temp[0] = temp[0].upper()
         return ' '.join(temp)
 
     def send_ftpcmd(self, command_str: str):
