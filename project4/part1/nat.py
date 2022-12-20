@@ -47,12 +47,17 @@ class R_MODULE(Process):
             # Finally generate a Athnet IP datagram by calling gen_Anet_IP_datagram and put it into
             # self.Network_Link_queue
             command: str = get_tcp_payload_from_IP(ip_datagram)
-            cmd, res = self.ftp.send_ftp_command(command)
+            cmd, res = self.ftp.send_ftp_command(command[:-2]) # due to \r\n
+            print(f'cmd {cmd}')
+            print(f'res {res}')
             dataset: list = split_ftp_data(res)
             port = 10001 if cmd in ['list', 'retr'] else 10000
             # pack data and send to node1
             for i, data in enumerate(dataset):
                 fin = int(i == len(dataset) - 1)
+                print(f'ftp server response: {data}')
+                if fin:
+                    data+='\r\n'
                 tcp = gen_tcp_packet(D_ADDR('192.168.1.2', port),
                                      i,
                                      fin,
