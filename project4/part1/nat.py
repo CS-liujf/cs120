@@ -18,7 +18,7 @@ class TRAN_NET_ITEM:
     protocol: str
 
 
-class T_MODULE(Thread):
+class T_MODULE(Process):
     def __init__(self, Network_Link_queue: 'Queue[bytes]') -> None:
         self.Network_Link_queue = Network_Link_queue
         super().__init__()
@@ -30,7 +30,7 @@ class T_MODULE(Thread):
             # self.Network_Link_queue.put(ip_datagram)
 
 
-class R_MODULE(Thread):
+class R_MODULE(Process):
     def __init__(self, Link_Network_queue: 'Queue[bytes]',
                  Network_Link_queue: 'Queue[bytes]') -> None:
         self.Link_Network_queue = Link_Network_queue
@@ -52,27 +52,28 @@ class R_MODULE(Thread):
             port = 10001 if cmd in ['list', 'retr'] else 10000
             # pack data and send to node1
             for i, data in enumerate(dataset):
-                fin = int(i == len(dataset)-1)
-                tcp = gen_tcp_packet(D_ADDR('192.168.1.2', port), i, fin, 21, ack_num=1, payload=data)
-                ip_datagram = gen_Anet_IP_datagram('140.110.96.68', '192.168.1.2', 'TCP', tcp)
+                fin = int(i == len(dataset) - 1)
+                tcp = gen_tcp_packet(D_ADDR('192.168.1.2', port),
+                                     i,
+                                     fin,
+                                     21,
+                                     ack_num=1,
+                                     payload=data.encode('utf-8'))
+                ip_datagram = gen_Anet_IP_datagram('140.110.96.68',
+                                                   '192.168.1.2', 'TCP', tcp)
                 self.Network_Link_queue.put(ip_datagram)
 
 
 class NETWORK(Process):
-    def __init__(self,
-                 Transport_Network_queue: 'Queue[TRAN_NET_ITEM]',
-                 Network_Transport_queue: 'Queue[bytes]',
-                 barrier: Barrier_ = None) -> None:
+    def __init__(self, barrier: Barrier_ = None) -> None:
         self.barrier = barrier if barrier != None else Barrier(5)
-        self.Transport_Network_queue = Transport_Network_queue
-        self.Network_Transport_queue = Network_Transport_queue
         super().__init__()
 
     def run(self):
         Network_Link_queue = Queue()
         Link_Network_queue = Queue()
         mac = MAC(Network_Link_queue, Link_Network_queue, self.barrier)
-        t_module = T_MODULE(self.Transport_Network_queue, Network_Link_queue)
+        t_module = T_MODULE(Network_Link_queue)
         t_module.start()
         r_module = R_MODULE(Link_Network_queue, Network_Link_queue)
         r_module.start()
@@ -82,7 +83,9 @@ class NETWORK(Process):
 
 class FtpClient:
     RETR_BLOCK_SIZE = 4096
-    OPERATIONS = ['user', 'pass', 'pwd', 'cwd', 'pasv', 'list', 'retr', 'connect', 'quit']
+    OPERATIONS = [
+        'user', 'pass', 'pwd', 'cwd', 'pasv', 'list', 'retr', 'connect', 'quit'
+    ]
 
     def __init__(self):
         self.ftp = ftplib.FTP()
@@ -123,7 +126,9 @@ class FtpClient:
     def retr_cmd(self, *args):
         assert args
         file = []
-        self.ftp.retrbinary(f'RETR {args[0]}', file.append, blocksize=FtpClient.RETR_BLOCK_SIZE)
+        self.ftp.retrbinary(f'RETR {args[0]}',
+                            file.append,
+                            blocksize=FtpClient.RETR_BLOCK_SIZE)
         return (b''.join(file)).decode('utf-8')
 
     def quit_cmd(self, *args):
@@ -136,7 +141,8 @@ class FtpClient:
         if ops is None:
             ops = self.OPERATIONS
         op = operation.lower()
-        operation = sorted(ops, key=lambda x: jellyfish.levenshtein_distance(x, op))[0]
+        operation = sorted(
+            ops, key=lambda x: jellyfish.levenshtein_distance(x, op))[0]
         if jellyfish.levenshtein_distance(operation, op) >= 3:
             raise ValueError(f'Invalid operation: {operation}')
         return operation
@@ -148,3 +154,9 @@ class FtpClient:
             return cmd, res
         except Exception as error:
             return cmd_line, error.args[0]
+
+
+if __name__ == '__main__':
+    nat = NETWORK()
+    nat.start()
+    nat.join()
