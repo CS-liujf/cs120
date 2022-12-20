@@ -153,6 +153,7 @@ class FtpClient:
         return operation
 
     def send_ftp_command(self, cmd_line: str):
+        cmd_line = cmd_line.strip().split()
         try:
             cmd = self._fuzzy_get_operation_name(cmd_line[0])
             res = getattr(self, cmd + '_cmd', 'error')(*cmd_line[1:])
