@@ -10,14 +10,6 @@ import ftplib
 import jellyfish
 
 
-@dataclass(frozen=True)
-class TRAN_NET_ITEM:
-    socket: SOCKET
-    d_addr: D_ADDR
-    payload: bytes
-    protocol: str
-
-
 class T_MODULE(Process):
     def __init__(self, Network_Link_queue: 'Queue[bytes]') -> None:
         self.Network_Link_queue = Network_Link_queue
@@ -47,7 +39,7 @@ class R_MODULE(Process):
             # Finally generate a Athnet IP datagram by calling gen_Anet_IP_datagram and put it into
             # self.Network_Link_queue
             command: str = get_tcp_payload_from_IP(ip_datagram)
-            cmd, res = self.ftp.send_ftp_command(command[:-2]) # due to \r\n
+            cmd, res = self.ftp.send_ftp_command(command[:-2])  # due to \r\n
             print(f'cmd {cmd}')
             print(f'res {res}')
             dataset: list = split_ftp_data(res)
@@ -57,7 +49,7 @@ class R_MODULE(Process):
                 fin = int(i == len(dataset) - 1)
                 print(f'ftp server response: {data}')
                 if fin:
-                    data+='\r\n'
+                    data += '\r\n'
                 tcp = gen_tcp_packet(D_ADDR('192.168.1.2', port),
                                      i,
                                      fin,
