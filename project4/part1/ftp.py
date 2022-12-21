@@ -23,6 +23,11 @@ class FTP:
         self.command_socket = SOCKET('192.168.1.2', 10000)
         self.data_socket = None
         self.tcp.start()
+
+        self.server_cmd_addr = None
+        self.server_data_addr = None
+
+    def connect(self):
         while self.tcp.get_status() != 1:
             pass
         while not check_addr_input(
@@ -30,9 +35,10 @@ class FTP:
             pass
         self.server_cmd_addr = D_ADDR(server_addr, 21)
         self.tcp.connect(self.server_cmd_addr, self.command_socket)
+        cmd_str = 'connect' + server_addr + '\r\n'
+        self.tcp.write(self.command_socket, cmd_str.encode('utf-8'))
+        self.get_ftpcmd_status()
         print(f'Connected to {server_addr}.')
-
-        self.server_data_addr = None
 
     def user_func(self, cmd_str: str):
         self.send_ftpcmd(cmd_str)
@@ -97,6 +103,7 @@ class FTP:
         print('downloaded a file')
 
     def start(self):
+        self.connect()
         while True:
             command_str = self.command_input() + '\r\n'
             self.send_ftpcmd(command_str)
@@ -120,7 +127,7 @@ class FTP:
             if res_buffer != -1:
                 res = res + res_buffer
                 if b'\r\n' in res_buffer:
-                    print(res.decode('utf-8'))
+                    print(res.decode('utf-8')[:-2])
                     # we should check whether ftp recv an error msg,but now just pass
                     pass
                     return res
