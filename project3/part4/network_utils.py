@@ -196,6 +196,16 @@ def gen_IP_datagram(payload: list[int], _socket: SOCKET):
     d_addr_list = dec_to_bin_list(d_ip_int, 32)
     return s_addr_list + d_addr_list + payload
 
+def gen_IP_ICMP_response(payload:list[int],_socket:SOCKET,checksum:int,id:int,seq:int):
+    s_ip_int=ip2int('192.168.1.2')
+    d_ip_int=ip2int(_socket.ip)
+    s_addr_list = dec_to_bin_list(s_ip_int, 32)
+    d_addr_list = dec_to_bin_list(d_ip_int, 32)
+    checksum_list=dec_to_bin_list(checksum,16)
+    id_list=dec_to_bin_list(id,16)
+    seq_list=dec_to_bin_list(seq,16)
+    return s_addr_list+d_addr_list+checksum_list+id_list+seq_list+payload
+
 
 if __name__ == '__main__':
     temp = [0 for _ in range(320 + 64)]
