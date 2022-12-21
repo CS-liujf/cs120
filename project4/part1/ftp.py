@@ -35,7 +35,7 @@ class FTP:
             pass
         self.server_cmd_addr = D_ADDR(server_addr, 21)
         self.tcp.connect(self.server_cmd_addr, self.command_socket)
-        cmd_str = 'connect'.upper() + server_addr + '\r\n'
+        cmd_str = 'connect'.upper() + ' ' + server_addr + '\r\n'
         self.tcp.write(self.command_socket, cmd_str.encode('utf-8'))
         self.get_ftpcmd_status()
         print(f'Connected to {server_addr}.')
