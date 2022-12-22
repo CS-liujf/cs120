@@ -4,6 +4,8 @@ from tcp_utils import SOCKET, D_ADDR
 import pyfiglet
 import time
 
+CRLF = '\r\n'
+
 
 class FTP:
     def __init__(self, d_addr=None, tcp: TCP = None):
@@ -121,18 +123,22 @@ class FTP:
         self.tcp.write(self.command_socket, command_str.encode('utf-8'))
 
     def get_ftpcmd_status(self):
-        res = b''
-        while True:
+        res = ''
+        flag = True
+        while flag:
             res_buffer = self.tcp.read(self.command_socket)
-            if res_buffer != -1:
-                res = res + res_buffer
-                if b'\r\n' in res_buffer:
-                    print(res.decode('utf-8')[:-2])
-                    # we should check whether ftp recv an error msg,but now just pass
-                    pass
-                    return res
-            else:
-                return -1
+            if res_buffer == -1:
+                continue
+            res_buffer = res_buffer.decode('utf-8')
+            temp = res_buffer.split(CRLF)
+            for msg in temp:
+                print(msg)
+                try:
+                    if msg[3] == ' ' and int(msg[:3]):
+                        flag = False
+                        break
+                except:
+                    continue
 
 
 if __name__ == '__main__':
