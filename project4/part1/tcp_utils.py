@@ -33,6 +33,11 @@ def gen_tcp_packet(d_addr: D_ADDR,
     return tcp_header + payload
 
 
+def check_FIN(tcp_packet: bytes) -> bool:
+    flag = struct.unpack_from('!B', tcp_packet, 13)
+    return flag == 1
+
+
 def check_tcp_flag(tcp_packet: bytes):
     pass
 

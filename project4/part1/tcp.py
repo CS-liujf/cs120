@@ -3,7 +3,7 @@ from multiprocessing.synchronize import Barrier as Barrier_
 from dataclasses import dataclass
 from queue import Queue as _Queue
 from network import NETWORK, TRAN_NET_ITEM
-from tcp_utils import SOCKET, D_ADDR, gen_tcp_packet, get_tcp_d_port, get_tcp_payload
+from tcp_utils import SOCKET, D_ADDR, gen_tcp_packet, get_tcp_d_port, get_tcp_payload, check_FIN
 
 
 @dataclass
@@ -60,12 +60,14 @@ class R_PROCESS(Process):
     def run(self):
         while True:
             if not self.Network_Transport_queue.empty():
+                tcp_packet = self.Network_Transport_queue.get_nowait()
+                tcp_port = get_tcp_d_port(tcp_packet)
+                tcp_payload = get_tcp_payload(tcp_packet)
+                is_closed = check_FIN(tcp_packet)
                 with self.tcp_table_lock:
-                    tcp_packet = self.Network_Transport_queue.get_nowait()
-                    tcp_port = get_tcp_d_port(tcp_packet)
-                    tcp_payload = get_tcp_payload(tcp_packet)
                     tcp_item = self.tcp_table[str(tcp_port)]
                     tcp_item.r_buffer = tcp_item.r_buffer + tcp_payload
+                    tcp_item.is_closed = is_closed
                     self.tcp_table[str(tcp_port)] = tcp_item
 
 
