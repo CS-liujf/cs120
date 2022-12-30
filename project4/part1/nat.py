@@ -2,12 +2,12 @@ import time
 from mac import MAC
 from multiprocessing import Queue, Process, Barrier
 from multiprocessing.synchronize import Barrier as Barrier_
-from threading import Thread
 from nat_utils import gen_Anet_IP_datagram, gen_tcp_packet, get_tcp_payload_from_IP, split_ftp_data
 from dataclasses import dataclass
 from tcp_utils import SOCKET, D_ADDR
 import ftplib
 import jellyfish
+from typing import Callable
 
 
 class T_MODULE(Process):
@@ -46,10 +46,10 @@ class R_MODULE(Process):
             port = 10001 if cmd in ['list', 'retr'] else 10000
             # pack data and send to node1
             for i, data in enumerate(dataset):
-                fin = int(i == len(dataset) - 1)
+                fin = int(
+                    (i == len(dataset) - 1)
+                    and port == 10001)  # only data tcp close in each turn
                 print(f'ftp server response: {data}')
-                if fin:
-                    data += '\r\n'
                 tcp = gen_tcp_packet(D_ADDR('192.168.1.2', port),
                                      i,
                                      fin,
@@ -84,29 +84,44 @@ class FtpClient:
         'user', 'pass', 'pwd', 'cwd', 'pasv', 'list', 'retr', 'connect', 'quit'
     ]
 
+    def res_format(func: Callable):
+        def inner(*args):
+            CRLF = '\r\n'
+            res: str = func(*args)
+            res = res.replace('\n', CRLF) + CRLF
+            return res
+
+        return inner
+
     def __init__(self):
         self.ftp = ftplib.FTP()
 
+    @res_format
     def user_cmd(self, *args):
         assert args
         return self.ftp.sendcmd(f'USER {args[0]}')
 
+    @res_format
     def pass_cmd(self, *args):
         assert args
         return self.ftp.sendcmd(f'PASS {args[0]}')
 
+    @res_format
     def connect_cmd(self, *args):
         host = (args or ["ftp.ncnu.edu.tw"])[0]
         print(f'connecting to host: {host}')
         return self.ftp.connect(host)
 
+    @res_format
     def pwd_cmd(self, *args):
         return self.ftp.sendcmd('PWD')
 
+    @res_format
     def cwd_cmd(self, *args):
         assert args
         return self.ftp.cwd(args[0])
 
+    @res_format
     def pasv_cmd(self, *args):
         assert args
         pasv = self._fuzzy_get_operation_name(args[0], ops=['true', 'false'])
@@ -115,6 +130,7 @@ class FtpClient:
         else:
             return self.ftp.sendcmd('PASV True')
 
+    @res_format
     def list_cmd(self, *args):
         files = []
         self.ftp.dir(files.append)
