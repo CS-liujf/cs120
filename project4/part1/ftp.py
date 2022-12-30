@@ -109,8 +109,10 @@ class FTP:
         self.connect()
         while True:
             command_str = self.command_input()
-            self.send_ftpcmd(command_str)
-            self.get_ftpcmd_status()
+            cmd = command_str.split()[0]
+            self.CMD_TABLE[cmd](command_str)
+            # self.send_ftpcmd(command_str)
+            # self.get_ftpcmd_status()
 
     def command_input(self) -> str:
         while not check_cmd_input(
