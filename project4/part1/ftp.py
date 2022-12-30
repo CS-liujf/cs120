@@ -35,12 +35,13 @@ class FTP:
         while not check_addr_input(
                 server_addr := input('Server IP address: ')):
             pass
+        server_addr = '140.110.96.68'  # just for test, remove for submitting
         self.server_cmd_addr = D_ADDR(server_addr, 21)
         self.tcp.connect(self.server_cmd_addr, self.command_socket)
-        cmd_str = 'connect'.upper() + ' ' + server_addr + '\r\n'
+        cmd_str = 'connect'.upper() + ' ' + server_addr + CRLF
         self.tcp.write(self.command_socket, cmd_str.encode('utf-8'))
         self.get_ftpcmd_status()
-        print(f'Connected to {server_addr}.')
+        # print(f'Connected to {server_addr}.')
 
     def user_func(self, cmd_str: str):
         self.send_ftpcmd(cmd_str)
@@ -107,7 +108,7 @@ class FTP:
     def start(self):
         self.connect()
         while True:
-            command_str = self.command_input() + '\r\n'
+            command_str = self.command_input()
             self.send_ftpcmd(command_str)
             self.get_ftpcmd_status()
 
@@ -117,7 +118,7 @@ class FTP:
             pass
         temp = command_str.split()
         temp[0] = temp[0].upper()
-        return ' '.join(temp)
+        return ' '.join(temp) + CRLF
 
     def send_ftpcmd(self, command_str: str):
         self.tcp.write(self.command_socket, command_str.encode('utf-8'))
@@ -127,18 +128,20 @@ class FTP:
         flag = True
         while flag:
             res_buffer = self.tcp.read(self.command_socket)
-            if res_buffer == -1:
+            if res_buffer == -1 or res_buffer == b'':
                 continue
             res_buffer = res_buffer.decode('utf-8')
+            print(res_buffer, end='')
             temp = res_buffer.split(CRLF)
             for msg in temp:
-                print(msg)
                 try:
                     if msg[3] == ' ' and int(msg[:3]):
                         flag = False
                         break
                 except:
                     continue
+
+        print('')
 
 
 if __name__ == '__main__':
