@@ -27,10 +27,10 @@ class R_MODULE(Process):
                  Network_Link_queue: 'Queue[bytes]') -> None:
         self.Link_Network_queue = Link_Network_queue
         self.Network_Link_queue = Network_Link_queue
-        self.ftp = FtpClient()
         super().__init__()
 
     def run(self):
+        self.ftp = FtpClient()
         while True:
             # get an ip datagram, send command to ftp server
             ip_datagram: bytes = self.Link_Network_queue.get()
@@ -40,8 +40,8 @@ class R_MODULE(Process):
             # self.Network_Link_queue
             command: str = get_tcp_payload_from_IP(ip_datagram)
             cmd, res = self.ftp.send_ftp_command(command[:-2])  # due to \r\n
-            print(f'cmd {cmd}')
-            print(f'res {res}')
+            # print(f'cmd {cmd}')
+            # print(f'res {res}')
             dataset: list = split_ftp_data(res)
             port = 10001 if cmd in ['list', 'retr'] else 10000
             # pack data and send to node1
