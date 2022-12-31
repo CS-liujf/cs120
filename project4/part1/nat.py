@@ -123,12 +123,7 @@ class FtpClient:
 
     @res_format
     def pasv_cmd(self, *args):
-        assert args
-        pasv = self._fuzzy_get_operation_name(args[0], ops=['true', 'false'])
-        if 'false' == pasv:
-            return self.ftp.sendcmd('PASV False')
-        else:
-            return self.ftp.sendcmd('PASV True')
+        return self.ftp.sendcmd('PASV True')
 
     @res_format
     def list_cmd(self, *args):
