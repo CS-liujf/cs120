@@ -94,8 +94,21 @@ class FTP:
 
     def get_file_size(self, file_name: str):
         self.send_ftpcmd(f'SIZE {file_name}')
-        res = self.get_ftpcmd_status()
-        return float(res.split()[-1])
+        flag = True
+        while flag:
+            res_buffer = self.tcp.read(self.command_socket)
+            if res_buffer == -1 or res_buffer == b'':
+                continue
+            res_buffer = res_buffer.decode('utf-8')
+            temp = res_buffer.split(CRLF)
+            for msg in temp:
+                try:
+                    if msg[3] == ' ' and int(msg[:3]):
+                        flag = False
+                        break
+                except:
+                    continue
+        return float(res_buffer.split()[-1])
 
     def retr_func(self, cmd_str: str):
         if self.data_socket == None:
