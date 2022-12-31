@@ -122,6 +122,8 @@ class FTP:
                 f.write(res)
 
         print('downloaded a file')
+        self.data_socket = None
+        self.server_data_addr = None
 
     def start(self):
         self.connect()
