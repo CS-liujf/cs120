@@ -3,6 +3,7 @@ from tcp import TCP
 from tcp_utils import SOCKET, D_ADDR
 import pyfiglet
 import time
+from tqdm import tqdm
 
 CRLF = '\r\n'
 
@@ -91,21 +92,34 @@ class FTP:
         self.data_socket = None
         self.server_data_addr = None
 
+    def get_file_size(self, file_name: str):
+        self.send_ftpcmd(f'SIZE {file_name}')
+        res = self.get_ftpcmd_status()
+        return float(res.split()[-1])
+
     def retr_func(self, cmd_str: str):
         if self.data_socket == None:
-            self.pass_func('PASV')
+            self.pasv_func('PASV')
         self.tcp.connect(self.server_data_addr, self.data_socket)
         self.send_ftpcmd(cmd_str)
-        res = self.get_ftpcmd_status()
-        with open(f'./{cmd_str.split()[1]}', 'wb') as f:
-            res = b''
-            while True:
-                res_buffer = self.tcp.read(self.data_socket)
-                if res_buffer != -1:
-                    res = res + res_buffer
-                else:
-                    break
-            f.write(res)
+        # res = self.get_ftpcmd_status()
+        file_name = cmd_str.split()[1]
+        file_size = self.get_file_size(file_name)
+        with tqdm(desc=file_name,
+                  total=file_size,
+                  ncols=105,
+                  unit='B',
+                  bar_format='{l_bar}{bar}| [{elapsed}s, {rate_fmt}]') as bar:
+            with open(f'./{file_name}', 'wb') as f:
+                res = b''
+                while True:
+                    res_buffer = self.tcp.read(self.data_socket)
+                    if res_buffer != -1 and res_buffer != b'':
+                        res = res + res_buffer
+                        bar.update(len(res_buffer))
+                    else:
+                        break
+                f.write(res)
 
         print('downloaded a file')
 
