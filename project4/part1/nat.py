@@ -81,7 +81,8 @@ class NETWORK(Process):
 class FtpClient:
     RETR_BLOCK_SIZE = 4096
     OPERATIONS = [
-        'user', 'pass', 'pwd', 'cwd', 'pasv', 'list', 'retr', 'connect', 'quit'
+        'user', 'pass', 'pwd', 'cwd', 'pasv', 'list', 'retr', 'connect',
+        'quit', 'size'
     ]
 
     def res_format(func: Callable):
@@ -130,6 +131,11 @@ class FtpClient:
         files = []
         self.ftp.dir(files.append)
         return '\n'.join(files)
+
+    @res_format
+    def size_cmd(self, *args):
+        assert args
+        return self.ftp.sendcmd(f'SIZE {args[0]}')
 
     def retr_cmd(self, *args):
         assert args
