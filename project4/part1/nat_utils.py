@@ -47,25 +47,27 @@ def gen_tcp_packet(d_addr: D_ADDR,
 
 
 def get_tcp_payload_from_IP(data: bytes) -> str:
-    exclude_IP_header = data[1*1+4*2:]
-    extract_from_tcp_packed = exclude_IP_header[2*2+4*2+1*2+2*3:]
+    exclude_IP_header = data[1 * 1 + 4 * 2:]
+    extract_from_tcp_packed = exclude_IP_header[2 * 2 + 4 * 2 + 1 * 2 + 2 * 3:]
     return extract_from_tcp_packed.decode('utf-8')
 
 
-def split_ftp_data(data: str) -> list[str]:
+def split_ftp_data(data: bytes) -> list[bytes]:
     """split string data to 64 bytes string in list"""
     frame_len = 64
-    if len(data) < frame_len:
-        return [data]
-    res = []
-    for i in range(len(data)//frame_len):
-        res.append(data[i*frame_len:(i+1)*frame_len])
-    if x := data[frame_len*(len(data)//frame_len):]:
-        res.append(x)
+    res = [data[i:i + frame_len] for i in range(0, len(data), frame_len)]
+    # if len(data) < frame_len:
+    #     return [data]
+    # res = []
+    # for i in range(len(data) // frame_len):
+    #     res.append(data[i * frame_len:(i + 1) * frame_len])
+    # if x := data[frame_len * (len(data) // frame_len):]:
+    #     res.append(x)
     return res
 
 
-
 if __name__ == '__main__':
-    s = b'\x06'
-    print(s.decode('utf-8'))
+    # s = b'\x06'
+    s = 'a' * 13
+    b = [s[i:i + 6] for i in range(0, len(s), 6)]
+    print(b)

@@ -49,13 +49,13 @@ class R_MODULE(Process):
                 fin = int(
                     (i == len(dataset) - 1)
                     and port == 10001)  # only data tcp close in each turn
-                print(f'ftp server response: {data}')
+                # print(f'ftp server response: {data}')
                 tcp = gen_tcp_packet(D_ADDR('192.168.1.2', port),
                                      i,
                                      fin,
                                      21,
                                      ack_num=1,
-                                     payload=data.encode('utf-8'))
+                                     payload=data)
                 ip_datagram = gen_Anet_IP_datagram('140.110.96.68',
                                                    '192.168.1.2', 'TCP', tcp)
                 self.Network_Link_queue.put(ip_datagram)
@@ -90,7 +90,7 @@ class FtpClient:
             CRLF = '\r\n'
             res: str = func(*args)
             res = res.replace('\n', CRLF) + CRLF
-            return res
+            return res.encode('utf-8')
 
         return inner
 
@@ -143,7 +143,7 @@ class FtpClient:
         self.ftp.retrbinary(f'RETR {args[0]}',
                             file.append,
                             blocksize=FtpClient.RETR_BLOCK_SIZE)
-        return (b''.join(file)).decode('utf-8')
+        return b''.join(file)
 
     def quit_cmd(self, *args):
         return self.ftp.quit()
