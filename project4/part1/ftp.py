@@ -60,7 +60,7 @@ class FTP:
         self.get_ftpcmd_status()
 
     def parse_port(self, res: str):
-        res = '227 Entering Passive Mode (140,110,96,68,205,75)'  #just for test, remember to remove!
+        # res = '227 Entering Passive Mode (140,110,96,68,205,75)'  #just for test, remember to remove!
         temp: tuple[int] = eval(res.split()[-1])
         port = temp[-2] * 256 + temp[-1]
         return port
@@ -75,20 +75,19 @@ class FTP:
 
     def list_func(self, cmd_str: str):
         if self.data_socket == None:
-            self.pass_func('PASV')
+            self.pasv_func('PASV')
 
         self.tcp.connect(self.server_data_addr, self.data_socket)
         self.send_ftpcmd(cmd_str)
-        self.get_ftpcmd_status()
-        res = b''
+        #self.get_ftpcmd_status()
         while True:
             res_buffer = self.tcp.read(self.data_socket)
-            if res_buffer != -1:
-                res = res + res_buffer
+            if res_buffer != -1 and res_buffer != b'':
+                print(res_buffer.decode('utf-8'), end='')
             else:
                 break
 
-        print(res)
+        print('')
         self.data_socket = None
         self.server_data_addr = None
 
