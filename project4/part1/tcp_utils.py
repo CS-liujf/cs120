@@ -34,7 +34,7 @@ def gen_tcp_packet(d_addr: D_ADDR,
 
 
 def check_FIN(tcp_packet: bytes) -> bool:
-    flag = struct.unpack_from('!B', tcp_packet, 13)
+    flag = struct.unpack_from('!B', tcp_packet, 13)[0]
     return flag == 1
 
 
