@@ -125,7 +125,7 @@ class FTP:
     def send_ftpcmd(self, command_str: str):
         self.tcp.write(self.command_socket, command_str.encode('utf-8'))
 
-    def get_ftpcmd_status(self):
+    def get_ftpcmd_status(self) -> str:
         res = ''
         flag = True
         while flag:
@@ -144,6 +144,7 @@ class FTP:
                     continue
 
         print('')
+        return res_buffer
 
 
 if __name__ == '__main__':
