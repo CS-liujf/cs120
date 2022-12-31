@@ -83,10 +83,10 @@ class FTP:
         #self.get_ftpcmd_status()
         while True:
             res_buffer = self.tcp.read(self.data_socket)
-            if res_buffer != -1 and res_buffer != b'':
-                print(res_buffer.decode('utf-8'), end='')
-            else:
+            if res_buffer == -1:
                 break
+            elif res_buffer != b'':
+                print(res_buffer.decode('utf-8'), end='')
 
         print('')
         self.data_socket = None
@@ -114,11 +114,11 @@ class FTP:
                 res = b''
                 while True:
                     res_buffer = self.tcp.read(self.data_socket)
-                    if res_buffer != -1 and res_buffer != b'':
+                    if res_buffer == -1:
+                        break
+                    elif res_buffer != b'':
                         res = res + res_buffer
                         bar.update(len(res_buffer))
-                    else:
-                        break
                 f.write(res)
 
         print('downloaded a file')
