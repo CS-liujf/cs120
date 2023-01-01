@@ -46,19 +46,19 @@ class FTP:
 
     def user_func(self, cmd_str: str):
         self.send_ftpcmd(cmd_str)
-        self.get_ftpcmd_status()
+        print(self.get_ftpcmd_status())
 
     def pass_func(self, cmd_str: str):
         self.send_ftpcmd(cmd_str)
-        self.get_ftpcmd_status()
+        print(self.get_ftpcmd_status())
 
     def pwd_func(self, cmd_str: str):
         self.send_ftpcmd(cmd_str)
-        self.get_ftpcmd_status()
+        print(self.get_ftpcmd_status())
 
     def cwd_func(self, cmd_str: str):
         self.send_ftpcmd(cmd_str)
-        self.get_ftpcmd_status()
+        print(self.get_ftpcmd_status())
 
     def parse_port(self, res: str):
         # res = '227 Entering Passive Mode (140,110,96,68,205,75)'  #just for test, remember to remove!
@@ -69,6 +69,7 @@ class FTP:
     def pasv_func(self, cmd_str: str):
         self.send_ftpcmd(cmd_str)
         res = self.get_ftpcmd_status()
+        print(res)
         # get port
         port = self.parse_port(res)
         self.data_socket = SOCKET('192.168.1.2', self.command_socket.port + 1)
@@ -76,7 +77,7 @@ class FTP:
 
     def list_func(self, cmd_str: str):
         if self.data_socket == None:
-            self.pasv_func('PASV'+CRLF)
+            self.pasv_func('PASV' + CRLF)
 
         self.tcp.connect(self.server_data_addr, self.data_socket)
         self.send_ftpcmd(cmd_str)
@@ -94,25 +95,12 @@ class FTP:
 
     def get_file_size(self, file_name: str):
         self.send_ftpcmd(f'SIZE {file_name}{CRLF}')
-        flag = True
-        while flag:
-            res_buffer = self.tcp.read(self.command_socket)
-            if res_buffer == -1 or res_buffer == b'':
-                continue
-            res_buffer = res_buffer.decode('utf-8')
-            temp = res_buffer.split(CRLF)
-            for msg in temp:
-                try:
-                    if msg[3] == ' ' and int(msg[:3]):
-                        flag = False
-                        break
-                except:
-                    continue
+        res_buffer = self.get_ftpcmd_status()
         return float(res_buffer.split()[-1])
 
     def retr_func(self, cmd_str: str):
         if self.data_socket == None:
-            self.pasv_func('PASV'+CRLF)
+            self.pasv_func('PASV' + CRLF)
         self.tcp.connect(self.server_data_addr, self.data_socket)
         # res = self.get_ftpcmd_status()
         file_name = cmd_str.split()[1]
@@ -166,7 +154,8 @@ class FTP:
             if res_buffer == -1 or res_buffer == b'':
                 continue
             res_buffer = res_buffer.decode('utf-8')
-            print(res_buffer, end='')
+            res = res + res_buffer
+            # print(res_buffer, end='')
             temp = res_buffer.split(CRLF)
             for msg in temp:
                 try:
@@ -176,8 +165,8 @@ class FTP:
                 except:
                     continue
 
-        print('')
-        return res_buffer
+        # print('')
+        return res
 
 
 if __name__ == '__main__':
