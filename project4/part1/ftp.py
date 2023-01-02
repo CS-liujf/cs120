@@ -41,7 +41,7 @@ class FTP:
         self.tcp.connect(self.server_cmd_addr, self.command_socket)
         cmd_str = 'connect'.upper() + ' ' + server_addr + CRLF
         self.tcp.write(self.command_socket, cmd_str.encode('utf-8'))
-        self.get_ftpcmd_status()
+        print(self.get_ftpcmd_status())
         # print(f'Connected to {server_addr}.')
 
     def user_func(self, cmd_str: str):
@@ -106,23 +106,32 @@ class FTP:
         file_name = cmd_str.split()[1]
         file_size = self.get_file_size(file_name)
         self.send_ftpcmd(cmd_str)
-        with tqdm(desc=file_name,
-                  total=file_size,
-                  ncols=105,
-                  unit='B',
-                  bar_format='{l_bar}{bar}| [{elapsed}s, {rate_fmt}]') as bar:
-            with open(f'./{file_name}', 'wb') as f:
-                res = b''
-                while True:
-                    res_buffer = self.tcp.read(self.data_socket)
-                    if res_buffer == -1:
-                        break
-                    elif res_buffer != b'':
-                        res = res + res_buffer
-                        bar.update(len(res_buffer))
-                f.write(res)
+        with open(f'./{file_name}', 'wb') as f:
+            res = b''
+            while True:
+                res_buffer = self.tcp.read(self.data_socket)
+                if res_buffer == -1:
+                    break
+                elif res_buffer != b'':
+                    res = res + res_buffer
+            f.write(res)
+        # with tqdm(desc=file_name,
+        #           total=file_size,
+        #           ncols=105,
+        #           unit='B',
+        #           bar_format='{l_bar}{bar}| [{elapsed}s, {rate_fmt}]') as bar:
+        #     with open(f'./{file_name}', 'wb') as f:
+        #         res = b''
+        #         while True:
+        #             res_buffer = self.tcp.read(self.data_socket)
+        #             if res_buffer == -1:
+        #                 break
+        #             elif res_buffer != b'':
+        #                 res = res + res_buffer
+        #                 bar.update(len(res_buffer))
+        #         f.write(res)
 
-        print('downloaded a file')
+        print('downloaded a file\n')
         self.data_socket = None
         self.server_data_addr = None
 
