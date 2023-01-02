@@ -109,14 +109,10 @@ class TCP(Process):
     def connect(self, d_addr: D_ADDR, _socket: SOCKET):
         #three way handshake
         port = _socket.port
-        if str(port) in self.tcp_table.keys():
-            self.tcp_table[str(port)].d_addr = d_addr
-            self.tcp_table[str(port)].is_connected = True
-        else:
-            self.tcp_table[str(port)] = TCP_ITEM(_socket,
-                                                 d_addr,
-                                                 is_connected=True,
-                                                 is_closed=False)
+        self.tcp_table[str(port)] = TCP_ITEM(_socket,
+                                             d_addr,
+                                             is_connected=True,
+                                             is_closed=False)
 
     def read(self,
              _socket: SOCKET,
