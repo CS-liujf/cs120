@@ -165,10 +165,11 @@ class FtpClient:
         cmd_line = cmd_line.strip().split()
         try:
             cmd = self._fuzzy_get_operation_name(cmd_line[0])
+            print(f'recv cmd {cmd}')
             res = getattr(self, cmd + '_cmd', 'error')(*cmd_line[1:])
             return cmd, res
         except Exception as error:
-            return cmd_line, error.args[0]
+            return cmd_line, (error.args[0]+'\r\n').encode('utf-8')
 
 
 if __name__ == '__main__':
