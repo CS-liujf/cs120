@@ -119,7 +119,7 @@ class TWINDOW(Process):
 
         max_re_count = max(map(lambda x: x.re_count, self.window))
 
-        if max_re_count > 20:
+        if max_re_count > 10:
             raise LinkError('MAC')
 
     def check_time(self):
@@ -340,50 +340,44 @@ class Rx(Process):
         input_process(input_queue, self.Rx_ACK_queue, self.Rx_MAC_queue)
 
 
+def gen_data() -> list[bytes]:
+    temp = (1024 * 64 * 'a').encode('utf-8')  #64KB
+    return [temp[i:i + 64] for i in range(0, len(temp), 64)]
+
+
 def main():
-    Network_Link_queue = Queue(maxsize=10)
-    Link_Network_queue = Queue(maxsize=60)
+    Network_Link_queue = Queue()
+    Link_Network_queue = Queue()
     # Link_Network_queue=
     # data_list = read_data()
     mac = MAC(Network_Link_queue, Link_Network_queue)
     mac.start()
     # frame transfered from Network layer to Link layer
-    time.sleep(1)
+    data = gen_data()
     try:
-        for _ in range(10):
-            Network_Link_queue.put(50*'a'.encode('utf-8'))
-        # for idx, data in enumerate(data_list):
-        #     Network_Link_queue.put(data, timeout=20)
-        # else:
-        #     print('transmittion end')
-        # while True:
-        # Network_Link_queue.put([1 for _ in range(100)])
-        # pass
+        for x in data:
+            Network_Link_queue.put(x)
         mac.join()
     except:
         print('Network timeout!')
 
 
 def main2():
-    Network_Link_queue = Queue(maxsize=10)
-    Link_Network_queue = Queue(maxsize=60)
+    Network_Link_queue = Queue()
+    Link_Network_queue = Queue()
     # Link_Network_queue=
     # data_list = read_data()
     mac = MAC(Network_Link_queue, Link_Network_queue)
     mac.start()
     recv_list = []
+    count = 0
     try:
         while True:
-            temp = Link_Network_queue.get(timeout=20)
-            recv_list = recv_list + temp
-
+            temp = Link_Network_queue.get()
+            count += 1
+            print(f'count {count}')
     except:
-        print('transmittion finished! Start storing')
-        # mac.terminate()
-        with open('./OUTPUT.txt', 'w') as f:
-            f.writelines(map(lambda x: str(x), recv_list))
-
-        print('Writing to disk finished!')
+        pass
         # mac.terminate()
 
 
