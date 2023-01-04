@@ -59,6 +59,15 @@ def check_cmd_input(command_str: str) -> bool:
     return False
 
 
+def print_file_size(file_size: int):
+    if file_size < 800:
+        print(f'file size: {file_size} B')
+    elif file_size < 800 * 1024:
+        print(f'file size: {file_size/1024:.2f} KB')
+    else:
+        print(f'file size: {file_size/1024/1024:.2f} MB')
+
+
 if __name__ == '__main__':
     # print(recursive_lcs('wd', 'pwd'))
     # temp = [1, 2, 3, 4, 3]

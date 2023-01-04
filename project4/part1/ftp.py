@@ -1,4 +1,4 @@
-from ftp_utils import check_addr_input, check_cmd_input
+from ftp_utils import check_addr_input, check_cmd_input, print_file_size
 from tcp import TCP
 from tcp_utils import SOCKET, D_ADDR
 import pyfiglet
@@ -105,31 +105,24 @@ class FTP:
         # res = self.get_ftpcmd_status()
         file_name = cmd_str.split()[1]
         file_size = self.get_file_size(file_name)
+        print_file_size(file_size)
         self.send_ftpcmd(cmd_str)
-        with open(f'./{file_name}', 'wb') as f:
-            res = b''
-            while True:
-                res_buffer = self.tcp.read(self.data_socket)
-                if res_buffer == -1:
-                    break
-                elif res_buffer != b'':
-                    res = res + res_buffer
-            f.write(res)
-        # with tqdm(desc=file_name,
-        #           total=file_size,
-        #           ncols=105,
-        #           unit='B',
-        #           bar_format='{l_bar}{bar}| [{elapsed}s, {rate_fmt}]') as bar:
-        #     with open(f'./{file_name}', 'wb') as f:
-        #         res = b''
-        #         while True:
-        #             res_buffer = self.tcp.read(self.data_socket)
-        #             if res_buffer == -1:
-        #                 break
-        #             elif res_buffer != b'':
-        #                 res = res + res_buffer
-        #                 bar.update(len(res_buffer))
-        #         f.write(res)
+        with tqdm(desc=file_name,
+                  total=file_size,
+                  ncols=105,
+                  unit='B',
+                  bar_format='{l_bar}{bar}| [{elapsed}s, {rate_noinv_fmt}]'
+                  ) as bar:
+            with open(f'./{file_name}', 'wb') as f:
+                res = b''
+                while True:
+                    res_buffer = self.tcp.read(self.data_socket)
+                    if res_buffer == -1:
+                        break
+                    elif res_buffer != b'':
+                        res = res + res_buffer
+                        bar.update(len(res_buffer))
+                f.write(res)
 
         print('downloaded a file\n')
         self.data_socket = None
@@ -145,8 +138,7 @@ class FTP:
             # self.get_ftpcmd_status()
 
     def command_input(self) -> str:
-        while not check_cmd_input(
-                command_str := input('Please input FTP command: ')):
+        while not check_cmd_input(command_str := input('ftp> ')):
             pass
         temp = command_str.split()
         temp[0] = temp[0].upper()
