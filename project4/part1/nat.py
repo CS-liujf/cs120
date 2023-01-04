@@ -169,7 +169,7 @@ class FtpClient:
             res = getattr(self, cmd + '_cmd', 'error')(*cmd_line[1:])
             return cmd, res
         except Exception as error:
-            return cmd_line, (error.args[0]+'\r\n').encode('utf-8')
+            return cmd_line, (str(error.args[0]) + '\r\n').encode('utf-8')
 
 
 if __name__ == '__main__':
