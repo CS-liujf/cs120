@@ -93,18 +93,27 @@ class FTP:
         self.data_socket = None
         self.server_data_addr = None
 
-    def get_file_size(self, file_name: str):
+    def size_func(self, file_name: str):
         self.send_ftpcmd(f'SIZE {file_name}{CRLF}')
         res_buffer = self.get_ftpcmd_status()
+        return res_buffer
+
+    def get_file_size(self, res_buffer: str):
+        if res_buffer[:3] != '213':
+            print(res_buffer)
+            return -1
         return float(res_buffer.split()[-1])
 
     def retr_func(self, cmd_str: str):
+        file_name = cmd_str.split()[1]
+        res = self.size_func(file_name)
+        file_size = self.get_file_size(res)
+        if file_size == -1:
+            return
         if self.data_socket == None:
             self.pasv_func('PASV' + CRLF)
         self.tcp.connect(self.server_data_addr, self.data_socket)
         # res = self.get_ftpcmd_status()
-        file_name = cmd_str.split()[1]
-        file_size = self.get_file_size(file_name)
         print_file_size(file_size)
         self.send_ftpcmd(cmd_str)
         with tqdm(desc=file_name,
