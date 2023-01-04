@@ -129,7 +129,10 @@ class FtpClient:
     @res_format
     def list_cmd(self, *args):
         files = []
-        self.ftp.dir(files.append)
+        if args:
+            self.ftp.dir(args[0], files.append)
+        else:
+            self.ftp.dir(files.append)
         return '\n'.join(files)
 
     @res_format
